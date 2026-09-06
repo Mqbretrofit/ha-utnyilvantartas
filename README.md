@@ -2,7 +2,7 @@
 
 Home Assistant egyéni integráció **Alapnyomkövetés + Kelio** adatokból készített havi útnyilvántartáshoz.
 
-Aktuális verzió: **0.4.42**
+Aktuális verzió: **0.4.43**
 
 [![Open your Home Assistant instance and open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Mqbretrofit&repository=ha-utnyilvantartas&category=integration)
 
@@ -76,16 +76,16 @@ Az e-mail funkcióhoz előbb állítsd be a Home Assistant **SMTP** integráció
 
 Használható változók: `{month}`, `{employee}`, `{company}`, `{filename}`.
 
+## 0.4.43
+
+- Az előző release-ben hibásan kódolt brand képek helyett valódi, ellenőrzött PNG került az integrációba.
+- A `brand/icon.png` és `brand/logo.png` most szabványos, megnyitható 256×256 PNG.
+- A hibás dark/@2x fájlok törölve; a Home Assistant saját fallback mechanizmusa használja a valid ikont.
+
 ## 0.4.42
 
-- Teljes Home Assistant brand-készlet került az integrációba: `icon.png`, `icon@2x.png`, `dark_icon.png`, `dark_icon@2x.png`, `logo.png`, `logo@2x.png`, `dark_logo.png`, `dark_logo@2x.png`.
-- Ez lefedi a normál, sötét témás és nagy DPI-s frontend kéréseket is.
-- Minden korábbi funkció változatlanul megmaradt.
-
-## 0.4.41
-
-- A saját Útnyilvántartás ikon bekerült a `custom_components/utnyilvantartas/brand/` könyvtárba.
-- A Home Assistant 2026.3+ így közvetlenül az integrációból tölti be az ikont/logót.
+- Teljes helyi brand-készlet az integrációban.
+- Normál, dark és @2x ikon/logó variánsok.
 
 ## 0.4.40
 

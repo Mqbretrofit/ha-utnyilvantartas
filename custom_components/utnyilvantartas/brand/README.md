@@ -1,7 +1,7 @@
 Home Assistant local brand assets for the `utnyilvantartas` custom integration.
 
-Included image variants:
-- icon.png / icon@2x.png
-- dark_icon.png / dark_icon@2x.png
-- logo.png / logo@2x.png
-- dark_logo.png / dark_logo@2x.png
+Only valid PNG files are stored directly:
+- icon.png
+- logo.png
+
+Home Assistant's Brands API falls back to these files automatically for dark and @2x requests.
