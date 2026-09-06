@@ -1,0 +1,53 @@
+name: Publish staged v0.4.40 source
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.publish/**'
+      - '.github/workflows/publish-staged-source.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reconstruct package and publish source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f .publish/part00.b64
+          test -f .publish/part06.b64
+          cat .publish/part*.b64 | base64 -d > /tmp/ha-utnyilvantartas-v0.4.40.zip
+          rm -rf /tmp/utny-publish
+          mkdir -p /tmp/utny-publish
+          unzip -q /tmp/ha-utnyilvantartas-v0.4.40.zip -d /tmp/utny-publish
+          test -f /tmp/utny-publish/custom_components/utnyilvantartas/manifest.json
+          rm -rf custom_components
+          cp -a /tmp/utny-publish/custom_components ./
+          cp -f /tmp/utny-publish/.gitignore ./.gitignore
+          cp -f /tmp/utny-publish/README.md ./README.md
+          rm -rf .publish
+
+      - name: Commit published source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'No changes to publish.'
+            exit 0
+          fi
+          git commit -m 'Publish v0.4.40 source'
+          git push origin main
