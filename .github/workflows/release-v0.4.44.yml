@@ -26,7 +26,6 @@ jobs:
 
           root = Path('custom_components/utnyilvantartas')
 
-          # Frontend wording
           p = root / 'frontend/utnyilvantartas-card.js'
           s = p.read_text(encoding='utf-8')
           s = re.sub(r'Panel v0\.4\.\d+ betöltve', 'Panel v0.4.44 betöltve', s, count=1)
@@ -52,7 +51,6 @@ jobs:
               s = s.replace(old, new)
           p.write_text(s, encoding='utf-8')
 
-          # Backend reason text
           p = root / 'coordinator.py'
           s = p.read_text(encoding='utf-8')
           replacements = {
@@ -68,14 +66,12 @@ jobs:
               s = s.replace(old, new)
           p.write_text(s, encoding='utf-8')
 
-          # Entity state descriptions
           p = root / 'binary_sensor.py'
           s = p.read_text(encoding='utf-8')
           s = s.replace('saját autós bejárási út jár ', 'saját autós bejárási út elszámolható ')
           s = s.replace('Ma egyik saját autós bejárási út sem jár', 'Ma egyik saját autós bejárási út sem elszámolható')
           p.write_text(s, encoding='utf-8')
 
-          # Translation/entity names
           for rel in ('strings.json', 'translations/hu.json'):
               p = root / rel
               s = p.read_text(encoding='utf-8')
@@ -84,7 +80,6 @@ jobs:
               s = s.replace('"Bejárási hozzájárulás jár"', '"Bejárás elszámolható"')
               p.write_text(s, encoding='utf-8')
 
-          # Service field names
           p = root / 'services.yaml'
           s = p.read_text(encoding='utf-8')
           if 'name: Reggeli út jár' not in s or 'name: Esti út jár' not in s:
@@ -93,7 +88,6 @@ jobs:
           s = s.replace('name: Esti út jár', 'name: Esti út elszámolható')
           p.write_text(s, encoding='utf-8')
 
-          # Frontend cache/version
           p = root / 'frontend/__init__.py'
           s = p.read_text(encoding='utf-8')
           s = re.sub(r'\?v=0\.4\.\d+', '?v=0.4.44', s, count=1)
@@ -105,23 +99,20 @@ jobs:
           manifest['version'] = '0.4.44'
           p.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
-          # README
           p = Path('README.md')
           s = p.read_text(encoding='utf-8')
           s = re.sub(r'Aktuális verzió: \*\*0\.4\.\d+\*\*', 'Aktuális verzió: **0.4.44**', s, count=1)
           s = s.replace('- napi JÁR / NEM JÁR döntés;', '- napi ELSZÁMOLHATÓ / NEM ELSZÁMOLHATÓ döntés;')
           if '## 0.4.44' not in s:
-              notes = '''## 0.4.44
-
-- A felületen a korábbi **JÁR / NEM JÁR** helyett **ELSZÁMOLHATÓ / NEM ELSZÁMOLHATÓ** jelenik meg.
-- A napi badge-ek, összesítők, részletek, kézi kiegészítés, jelmagyarázat és indoklás egységes megnevezést használ.
-- A Home Assistant entitás- és szolgáltatásnevek szövegezése is ehhez igazodik.
-
-'''
+              notes = (
+                  '## 0.4.44\n\n'
+                  '- A felületen a korábbi **JÁR / NEM JÁR** helyett **ELSZÁMOLHATÓ / NEM ELSZÁMOLHATÓ** jelenik meg.\n'
+                  '- A napi badge-ek, összesítők, részletek, kézi kiegészítés, jelmagyarázat és indoklás egységes megnevezést használ.\n'
+                  '- A Home Assistant entitás- és szolgáltatásnevek szövegezése is ehhez igazodik.\n\n'
+              )
               s = s.replace('## 0.4.43\n', notes + '## 0.4.43\n', 1)
           p.write_text(s, encoding='utf-8')
 
-          # Sanity checks
           js = (root / 'frontend/utnyilvantartas-card.js').read_text(encoding='utf-8')
           for forbidden in ('NEM JÁR', 'JÁR · 2/2', '1 ÚT JÁR', 'Bejárás jár', 'Nem jár', 'Reggeli út jár', 'Esti út jár'):
               if forbidden in js:
