@@ -1,0 +1,134 @@
+{
+  "title": "Útnyilvántartás",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Útnyilvántartás beállítása",
+        "description": "Alapnyomkövetés céges autó + Kelio napi és havi jelenlét. A céges autó GPS-éhez külön zónatolerancia és indulási/érkezési útvonalablak állítható.",
+        "data": {
+          "username": "Alapnyomkövetés felhasználónév",
+          "password": "Alapnyomkövetés jelszó",
+          "device_id": "GPS eszköz ID",
+          "vehicle_name": "Jármű neve",
+          "home_zone": "Otthon zóna",
+          "work_zone": "Munkahely zóna",
+          "kelio_entity": "Kelio jelenlét entitás",
+          "scan_interval": "Frissítés percben",
+          "kelio_month_entity": "Kelio havi jelenlét entitás",
+          "home_gps_radius_m": "Otthon GPS felismerési sugár (m)",
+          "work_gps_radius_m": "Munkahely GPS felismerési sugár (m)",
+          "endpoint_window_km": "Indulási/érkezési útvonalablak (km)"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Hibás Alapnyomkövetés felhasználónév vagy jelszó.",
+      "cannot_connect": "Nem sikerült kapcsolódni az Alapnyomkövetéshez."
+    },
+    "abort": {
+      "already_configured": "Ez a GPS eszköz már be van állítva."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "daily_distance": {
+        "name": "Céges autó napi távolság"
+      },
+      "max_speed": {
+        "name": "Céges autó napi max. sebesség"
+      },
+      "first_movement": {
+        "name": "Céges autó első mozgás"
+      },
+      "last_movement": {
+        "name": "Céges autó utolsó mozgás"
+      },
+      "gps_points": {
+        "name": "Céges autó GPS pontok"
+      },
+      "monthly_summary": {
+        "name": "Havi bejárási jogosultság"
+      },
+      "monthly_pdf": {
+        "name": "Havi PDF"
+      }
+    },
+    "binary_sensor": {
+      "started_home": {
+        "name": "Céges autó otthonról indult"
+      },
+      "ended_home": {
+        "name": "Céges autó otthon érkezett"
+      },
+      "touched_home": {
+        "name": "Céges autó érintette az otthont"
+      },
+      "started_work": {
+        "name": "Céges autó munkahelyről indult"
+      },
+      "ended_work": {
+        "name": "Céges autó munkahelyre érkezett"
+      },
+      "touched_work": {
+        "name": "Céges autó érintette a munkahelyet"
+      },
+      "commute_eligible": {
+        "name": "Bejárási hozzájárulás jár"
+      },
+      "movement_detected": {
+        "name": "Céges autó mozgott ma"
+      },
+      "kelio_presence_today": {
+        "name": "Kelio jelenlét ma"
+      }
+    },
+    "button": {
+      "refresh_month": {
+        "name": "Havi adatok újraszámítása"
+      },
+      "generate_pdf": {
+        "name": "Havi PDF generálása"
+      },
+      "email_pdf": {
+        "name": "Havi PDF e-mail küldése"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Útnyilvántartás beállításai",
+        "description": "Zónák, GPS toleranciák, Kelio entitások, PDF adatok és a saját autós bejárás. A kezdő óraállás alapérték; az integráció ezután hónapról hónapra automatikusan hozzáadja az elszámolt saját autós kilométereket.",
+        "data": {
+          "home_zone": "Otthon zóna",
+          "work_zone": "Munkahely zóna",
+          "kelio_entity": "Kelio jelenlét entitás",
+          "scan_interval": "Frissítés percben",
+          "kelio_month_entity": "Kelio havi jelenlét entitás",
+          "home_gps_radius_m": "Otthon GPS felismerési sugár (m)",
+          "work_gps_radius_m": "Munkahely GPS felismerési sugár (m)",
+          "endpoint_window_km": "Indulási/érkezési útvonalablak (km)",
+          "report_company_name": "PDF - cég neve",
+          "report_company_address": "PDF - cég címe",
+          "report_tax_number": "PDF - adószám",
+          "report_employee_name": "PDF - munkavállaló neve",
+          "report_private_vehicle": "PDF - saját autó rendszáma",
+          "commute_one_way_km": "Egyirányú Otthon-Munkahely távolság (km)",
+          "reimbursement_huf_per_km": "Átalány / térítés (Ft/km)",
+          "report_vehicle_type": "PDF - saját autó típusa",
+          "report_fuel_type": "PDF - üzemanyag típusa",
+          "report_fuel_consumption_l_100km": "PDF - tartalék fogyasztás (l/100 km, ha a NAV norma nem számolható)",
+          "report_start_odometer_km": "PDF - alap kezdő óraállás (km)",
+          "report_home_label": "PDF - otthon megnevezése",
+          "report_home_address": "PDF - otthon címe",
+          "report_fuel_price_huf_l": "PDF - tartalék üzemanyagár (Ft/l, ha a NAV nem elérhető)",
+          "report_trip_nature": "PDF - jelleg",
+          "report_engine_cc": "PDF - hengerűrtartalom (cm³, NAV fogyasztási normához)",
+          "email_recipient": "E-mail - címzett",
+          "email_subject": "E-mail - tárgy",
+          "email_body": "E-mail - szöveg"
+        }
+      }
+    }
+  }
+}

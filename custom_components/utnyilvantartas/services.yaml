@@ -1,0 +1,68 @@
+set_month:
+  name: Hónap megnyitása
+  description: A kiválasztott hónap Kelio és GPS adatait frissíti, majd megjeleníti.
+  fields:
+    month:
+      name: Hónap
+      description: YYYY-MM formátum, például 2026-08.
+      required: true
+      example: "2026-08"
+      selector:
+        text:
+    entry_id:
+      name: Config entry azonosító
+      description: Több Útnyilvántartás példány esetén szükséges.
+      required: false
+      selector:
+        text:
+
+set_manual_day:
+  name: Kézi napi kiegészítés
+  description: >
+    Kézzel hozzáad egy munkanapot a kiválasztott hónaphoz, ha a Kelio aznapi
+    bejegyzése még nem érhető el. A valódi Kelio adat később automatikusan
+    felülírja a kézi kiegészítést.
+  fields:
+    date:
+      name: Dátum
+      required: true
+      selector:
+        date:
+    morning_eligible:
+      name: Reggeli út jár
+      required: true
+      default: true
+      selector:
+        boolean:
+    evening_eligible:
+      name: Esti út jár
+      required: true
+      default: true
+      selector:
+        boolean:
+    note:
+      name: Megjegyzés
+      required: false
+      selector:
+        text:
+          multiline: true
+    entry_id:
+      name: Config entry azonosító
+      required: false
+      selector:
+        text:
+
+remove_manual_day:
+  name: Kézi napi kiegészítés törlése
+  description: Törli a megadott nap kézi kiegészítését.
+  fields:
+    date:
+      name: Dátum
+      required: true
+      selector:
+        date:
+    entry_id:
+      name: Config entry azonosító
+      required: false
+      selector:
+        text:
