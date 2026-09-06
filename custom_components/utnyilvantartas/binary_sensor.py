@@ -224,7 +224,7 @@ class CommuteEligibilityBinarySensor(
 
                 if eligible_legs > 0:
                     return True, (
-                        f"Ma {eligible_legs}/2 saját autós bejárási út jár "
+                        f"Ma {eligible_legs}/2 saját autós bejárási út elszámolható "
                         f"(reggel={morning}, este={evening})"
                     )
                 if unknown_legs > 0:
@@ -232,7 +232,7 @@ class CommuteEligibilityBinarySensor(
                         f"A mai bejárás még nem teljesen eldönthető "
                         f"(reggel={morning}, este={evening})"
                     )
-                return False, "Ma egyik saját autós bejárási út sem jár"
+                return False, "Ma egyik saját autós bejárási út sem elszámolható"
 
         return None, "A mai két bejárási út havi/éjszakai kiértékelése még nem készült el"
 

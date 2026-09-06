@@ -1,4 +1,4 @@
-console.info("%c Útnyilvántartás Panel v0.4.40 betöltve ", "color:#fff;background:#1976d2;font-weight:700;padding:3px 6px;border-radius:4px");
+console.info("%c Útnyilvántartás Panel v0.4.44 betöltve ", "color:#fff;background:#1976d2;font-weight:700;padding:3px 6px;border-radius:4px");
 
 class UtnyilvantartasCard extends HTMLElement {
   constructor() {
@@ -612,7 +612,7 @@ class UtnyilvantartasCard extends HTMLElement {
 
     const todayItems = [
       ["Kelio ma", this._onOff(this._state(ids.kelioToday))],
-      ["Bejárás jár", this._onOff(this._state(ids.eligibleToday))],
+      ["Bejárás elszámolható", this._onOff(this._state(ids.eligibleToday))],
       ["Céges autó mozgott", this._onOff(this._state(ids.movedToday))],
       ["Otthonról indult", this._onOff(this._state(ids.startedHome))],
       ["Otthon érkezett", this._onOff(this._state(ids.endedHome))],
@@ -633,11 +633,11 @@ class UtnyilvantartasCard extends HTMLElement {
       const unresolved = present && unknownCount > 0;
       const expanded = this._expandedDates.has(r.date);
       const rowClass = !present ? "off" : full ? "eligible" : (partial || unresolved) ? "warn" : "ineligible";
-      const badge = !present ? `<span class="pill danger">NEM JÁR</span><span class="sub">Kelio nincs</span>`
-        : full ? `<span class="pill success">JÁR · 2/2 ÚT</span>`
-        : partial ? `<span class="pill warn">1 ÚT JÁR</span><span class="sub">${morning === true ? "reggel" : "este"}</span>`
+      const badge = !present ? `<span class="pill danger">NEM ELSZÁMOLHATÓ</span><span class="sub">Kelio nincs</span>`
+        : full ? `<span class="pill success">ELSZÁMOLHATÓ · 2/2 ÚT</span>`
+        : partial ? `<span class="pill warn">1 ÚT ELSZÁMOLHATÓ</span><span class="sub">${morning === true ? "reggel" : "este"}</span>`
         : unresolved ? `<span class="pill warn">?</span>`
-        : `<span class="pill danger">NEM JÁR · 0/2</span>`;
+        : `<span class="pill danger">NEM ELSZÁMOLHATÓ · 0/2</span>`;
       const toggle = car
         ? `<button class="row-toggle" data-date="${r.date}" title="Részletek">
              <ha-icon icon="mdi:${expanded ? "chevron-up" : "chevron-down"}"></ha-icon>
@@ -670,7 +670,7 @@ class UtnyilvantartasCard extends HTMLElement {
                 <div class="detail-head">
                   <div>
                     <span class="detail-date">${this._day(r.date)}</span>
-                    <b>${full ? "BEJÁRÁS JÁR · 2/2 ÚT" : partial ? "RÉSZBEN JÁR · 1/2 ÚT" : unresolved ? "NEM DÖNTHETŐ EL" : "BEJÁRÁS NEM JÁR · 0/2 ÚT"}</b>
+                    <b>${full ? "ELSZÁMOLHATÓ · 2/2 ÚT" : partial ? "RÉSZBEN ELSZÁMOLHATÓ · 1/2 ÚT" : unresolved ? "NEM DÖNTHETŐ EL" : "NEM ELSZÁMOLHATÓ · 0/2 ÚT"}</b>
                   </div>
                   <div class="detail-reason">${r.reason || "-"}</div>
                 </div>
@@ -791,7 +791,7 @@ class UtnyilvantartasCard extends HTMLElement {
 
                   <div class="detail-card night-card">
                     <h4><ha-icon icon="mdi:weather-night"></ha-icon> Éjszakai Otthon-ellenőrzés · EZ DÖNT</h4>
-                    <div class="decision-rule">A céges autóra vonatkozó JÁR / NEM JÁR döntés ebből a két 18:00–06:00 időablakból készül.</div>
+                    <div class="decision-rule">A céges autóra vonatkozó ELSZÁMOLHATÓ / NEM ELSZÁMOLHATÓ döntés ebből a két 18:00–06:00 időablakból készül.</div>
                     <div class="detail-line"><span>Előző este 18:00 → reggel 06:00</span>${this._boolLabel(car.overnight_before_home)}</div>
                     <div class="detail-line"><span>Első Otthon-zóna pont</span><b>${this._timeSeconds(car.overnight_before_first_home_time)}</b></div>
                     <div class="detail-line"><span>Utolsó Otthon-zóna pont</span><b>${this._timeSeconds(car.overnight_before_last_home_time)}</b></div>
@@ -899,8 +899,8 @@ class UtnyilvantartasCard extends HTMLElement {
         <div class="content">
           <section class="stats">
             <div class="stat"><div class="icon kelio"><ha-icon icon="mdi:account-check"></ha-icon></div><div><span>Jelenlét</span><b>${presence} nap</b><small>Kelio: ${kelioPresenceCount} · kézi: ${manualDates.length}</small></div></div>
-            <div class="stat"><div class="icon success"><ha-icon icon="mdi:cash-check"></ha-icon></div><div><span>Bejárás jár</span><b>${this._num(eligible, eligible % 1 ? 1 : 0)} nap</b><small>${eligibleLegs} egyirányú út</small></div></div>
-            <div class="stat"><div class="icon danger"><ha-icon icon="mdi:cash-remove"></ha-icon></div><div><span>Nem jár</span><b>${this._num(ineligible, ineligible % 1 ? 1 : 0)} nap</b><small>${ineligibleLegs} egyirányú út${unknownLegs ? ` · ${unknownLegs} függőben` : ""}</small></div></div>
+            <div class="stat"><div class="icon success"><ha-icon icon="mdi:cash-check"></ha-icon></div><div><span>Elszámolható</span><b>${this._num(eligible, eligible % 1 ? 1 : 0)} nap</b><small>${eligibleLegs} egyirányú út</small></div></div>
+            <div class="stat"><div class="icon danger"><ha-icon icon="mdi:cash-remove"></ha-icon></div><div><span>Nem elszámolható</span><b>${this._num(ineligible, ineligible % 1 ? 1 : 0)} nap</b><small>${ineligibleLegs} egyirányú út${unknownLegs ? ` · ${unknownLegs} függőben` : ""}</small></div></div>
             <div class="stat"><div class="icon private"><ha-icon icon="mdi:car"></ha-icon></div><div><span>Saját autó ebben a hónapban</span><b>${this._num(privateKm, privateKm % 1 ? 1 : 0)} km</b></div></div>
             <div class="stat"><div class="icon money"><ha-icon icon="mdi:cash-multiple"></ha-icon></div><div><span>Bejárási térítés</span><b>${this._num(reimbursement)} Ft</b></div></div>
             <div class="stat"><div class="icon company"><ha-icon icon="mdi:car-connected"></ha-icon></div><div><span>Céges autó vizsgált útjai</span><b>${this._num(companyKm, 2)} km</b></div></div>
@@ -969,11 +969,11 @@ class UtnyilvantartasCard extends HTMLElement {
               </label>
               <label class="manual-check">
                 <input id="manual-morning" type="checkbox" ${this._manualForm.morning ? "checked" : ""}>
-                <span>Reggeli út jár<br><small>Otthon → Munkahely</small></span>
+                <span>Reggeli út elszámolható<br><small>Otthon → Munkahely</small></span>
               </label>
               <label class="manual-check">
                 <input id="manual-evening" type="checkbox" ${this._manualForm.evening ? "checked" : ""}>
-                <span>Esti út jár<br><small>Munkahely → Otthon</small></span>
+                <span>Esti út elszámolható<br><small>Munkahely → Otthon</small></span>
               </label>
               <label class="manual-note">
                 <span>Megjegyzés</span>
@@ -1027,7 +1027,7 @@ class UtnyilvantartasCard extends HTMLElement {
           <section class="panel table-panel">
             <div class="section-title row-title">
               <div><ha-icon icon="mdi:table-large"></ha-icon><span>Havi napi bontás</span><small class="row-hint">A nyíllal lenyitható a döntés teljes GPS- és időpont-diagnosztikája.</small></div>
-              <div class="legend"><span class="dot green"></span>2/2 út jár <span class="dot orange"></span>1/2 út jár / függő <span class="dot red"></span>0/2 út jár <span class="manual-mark">KÉZI</span> kézi kiegészítés <span class="dot gray"></span>Nincs jelenlét</div>
+              <div class="legend"><span class="dot green"></span>2/2 elszámolható <span class="dot orange"></span>1/2 elszámolható / függő <span class="dot red"></span>0/2 elszámolható <span class="manual-mark">KÉZI</span> kézi kiegészítés <span class="dot gray"></span>Nincs jelenlét</div>
             </div>
             <div class="table-scroll">
               <table>

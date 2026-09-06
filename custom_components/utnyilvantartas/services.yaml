@@ -29,13 +29,13 @@ set_manual_day:
       selector:
         date:
     morning_eligible:
-      name: Reggeli út jár
+      name: Reggeli út elszámolható
       required: true
       default: true
       selector:
         boolean:
     evening_eligible:
-      name: Esti út jár
+      name: Esti út elszámolható
       required: true
       default: true
       selector:

@@ -2,7 +2,7 @@
 
 Home Assistant egyéni integráció **Alapnyomkövetés + Kelio** adatokból készített havi útnyilvántartáshoz.
 
-Aktuális verzió: **0.4.43**
+Aktuális verzió: **0.4.44**
 
 [![Open your Home Assistant instance and open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Mqbretrofit&repository=ha-utnyilvantartas&category=integration)
 
@@ -49,7 +49,7 @@ A személyes PDF-adatok, címek, rendszám, óraállás és e-mail cím az integ
 Az integráció saját oldalsávos panelt regisztrál **Útnyilvántartás** néven. Itt látható többek között:
 
 - havi összesítés;
-- napi JÁR / NEM JÁR döntés;
+- napi ELSZÁMOLHATÓ / NEM ELSZÁMOLHATÓ döntés;
 - részletes GPS- és bejárási diagnosztika;
 - Alapnyomkövetés Kiértékelés táblázat;
 - PDF-generálás és e-mail küldés;
@@ -75,6 +75,12 @@ Az e-mail funkcióhoz előbb állítsd be a Home Assistant **SMTP** integráció
 - levélszöveg.
 
 Használható változók: `{month}`, `{employee}`, `{company}`, `{filename}`.
+
+## 0.4.44
+
+- A felületen a korábbi **JÁR / NEM JÁR** helyett **ELSZÁMOLHATÓ / NEM ELSZÁMOLHATÓ** jelenik meg.
+- A napi badge-ek, összesítők, részletek, kézi kiegészítés, jelmagyarázat és indoklás egységes megnevezést használ.
+- A Home Assistant entitás- és szolgáltatásnevek szövegezése is ehhez igazodik.
 
 ## 0.4.43
 

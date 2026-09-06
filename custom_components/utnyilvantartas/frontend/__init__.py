@@ -13,7 +13,7 @@ _LOGGER = logging.getLogger(__name__)
 FRONTEND_DIR = Path(__file__).parent
 FRONTEND_BASE = "/utnyilvantartas_static"
 CARD_FILENAME = "utnyilvantartas-card.js"
-CARD_URL = f"{FRONTEND_BASE}/{CARD_FILENAME}?v=0.4.40"
+CARD_URL = f"{FRONTEND_BASE}/{CARD_FILENAME}?v=0.4.44"
 PANEL_PATH = "utnyilvantartas"
 PANEL_ELEMENT = "utnyilvantartas-card"
 
@@ -47,7 +47,7 @@ async def async_register_frontend(hass: HomeAssistant) -> None:
         frontend_url_path=PANEL_PATH,
         config={
             "integration": "utnyilvantartas",
-            "version": "0.4.40",
+            "version": "0.4.44",
             "_panel_custom": {
                 "name": PANEL_ELEMENT,
                 "embed_iframe": False,

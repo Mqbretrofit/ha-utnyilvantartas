@@ -73,7 +73,7 @@
         "name": "Céges autó érintette a munkahelyet"
       },
       "commute_eligible": {
-        "name": "Bejárási hozzájárulás jár"
+        "name": "Bejárás elszámolható"
       },
       "movement_detected": {
         "name": "Céges autó mozgott ma"

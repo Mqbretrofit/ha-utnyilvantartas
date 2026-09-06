@@ -822,7 +822,7 @@ def evaluate_commute_legs(
         last_when: str | None,
     ) -> str:
         if eligible is True:
-            return f"{name}: JÁR"
+            return f"{name}: ELSZÁMOLHATÓ"
         if eligible is None:
             return f"{name}: ?"
         first_text = (
@@ -836,8 +836,8 @@ def evaluate_commute_legs(
             else "-"
         )
         if home is True:
-            return f"{name}: NEM JÁR (céges autó Otthon: {first_text}–{last_text})"
-        return f"{name}: NEM JÁR"
+            return f"{name}: NEM ELSZÁMOLHATÓ (céges autó Otthon: {first_text}–{last_text})"
+        return f"{name}: NEM ELSZÁMOLHATÓ"
 
     morning_text = _night_reason(
         "reggeli út",
@@ -1451,7 +1451,7 @@ class UtnyilvantartasCoordinator(DataUpdateCoordinator[DailySummary]):
         # Fetch the server-side Statistics/Route evaluation discovered in the
         # Alapnyomkövetés web UI. This is intentionally sidecar/diagnostic in
         # v0.4.20 until we verify the returned JSON schema on the real account.
-        # A failure here must NEVER change the existing JÁR/NEM JÁR result.
+        # A failure here must NEVER change the existing ELSZÁMOLHATÓ/NEM ELSZÁMOLHATÓ result.
         route_stats_path = Path(
             self.hass.config.path(
                 "utnyilvantartas",
@@ -2102,7 +2102,7 @@ class UtnyMonthlyCoordinator(DataUpdateCoordinator[MonthlySummary]):
                         "ineligible_legs": 2,
                         "unknown_legs": 0,
                         "eligible_day_equivalent": 0.0,
-                        "reason": "Kelio: nincs igazolt jelenlét → egyik bejárási út sem jár (GPS nem kerül értékelésre)",
+                        "reason": "Kelio: nincs igazolt jelenlét → egyik bejárási út sem elszámolható (GPS nem kerül értékelésre)",
                         "company_car": None,
                     }
                 )
@@ -2191,7 +2191,7 @@ class UtnyMonthlyCoordinator(DataUpdateCoordinator[MonthlySummary]):
                 record["unknown_legs"] = 0
                 record["eligible_day_equivalent"] = 0.0
                 record["reason"] = (
-                    "Kelio: nincs igazolt jelenlét → egyik bejárási út sem jár "
+                    "Kelio: nincs igazolt jelenlét → egyik bejárási út sem elszámolható "
                     "(a céges autó helyzete ilyenkor nem számít)"
                 )
                 record["company_car"] = None
