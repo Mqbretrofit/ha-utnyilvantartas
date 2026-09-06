@@ -51,3 +51,5 @@ jobs:
           fi
           git commit -m 'Publish v0.4.40 source'
           git push origin main
+
+# staging complete: retry publisher
