@@ -4,6 +4,8 @@ Home Assistant egyéni integráció **Alapnyomkövetés + Kelio** adatokból ké
 
 Aktuális verzió: **0.4.40**
 
+[![Open your Home Assistant instance and open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Mqbretrofit&repository=ha-utnyilvantartas&category=integration)
+
 ## Fő funkciók
 
 - Alapnyomkövetés napi és havi GPS-adatok feldolgozása.
