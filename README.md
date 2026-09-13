@@ -2,7 +2,7 @@
 
 Home Assistant egyéni integráció **Alapnyomkövetés + Kelio** adatokból készített havi útnyilvántartáshoz.
 
-Aktuális verzió: **0.4.44**
+Aktuális verzió: **0.4.45**
 
 [![Open your Home Assistant instance and open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Mqbretrofit&repository=ha-utnyilvantartas&category=integration)
 
@@ -75,6 +75,12 @@ Az e-mail funkcióhoz előbb állítsd be a Home Assistant **SMTP** integráció
 - levélszöveg.
 
 Használható változók: `{month}`, `{employee}`, `{company}`, `{filename}`.
+
+## 0.4.45
+
+- Recorder teljesítményjavítás: a nagy havi `records` attribútum továbbra is elérhető az élő Home Assistant state-ben és a dashboard számára, de nem kerül eltárolásra a Recorder adatbázisában.
+- Megszűnik a `State attributes ... exceed maximum size of 16384 bytes` figyelmeztetés a havi bejárási jogosultság szenzoroknál.
+- A havi lista, GPS-diagnosztika, PDF és a meglévő funkciók változatlanul működnek.
 
 ## 0.4.44
 

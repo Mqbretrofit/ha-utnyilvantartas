@@ -1,4 +1,4 @@
-console.info("%c Útnyilvántartás Panel v0.4.44 betöltve ", "color:#fff;background:#1976d2;font-weight:700;padding:3px 6px;border-radius:4px");
+console.info("%c Útnyilvántartás Panel v0.4.45 betöltve ", "color:#fff;background:#1976d2;font-weight:700;padding:3px 6px;border-radius:4px");
 
 class UtnyilvantartasCard extends HTMLElement {
   constructor() {
