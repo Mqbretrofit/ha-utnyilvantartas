@@ -134,6 +134,7 @@ class UtnySensor(CoordinatorEntity[UtnyilvantartasCoordinator], SensorEntity):
 
 
 class MonthlySummarySensor(CoordinatorEntity[UtnyMonthlyCoordinator], SensorEntity):
+    _unrecorded_attributes = frozenset({"records"})
     _attr_has_entity_name = True
     _attr_translation_key = "monthly_summary"
     _attr_icon = "mdi:calendar-check-outline"
