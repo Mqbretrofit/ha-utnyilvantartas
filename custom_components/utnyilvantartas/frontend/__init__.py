@@ -12,17 +12,22 @@ _LOGGER = logging.getLogger(__name__)
 
 FRONTEND_DIR = Path(__file__).parent
 FRONTEND_BASE = "/utnyilvantartas_static"
-CARD_FILENAME = "utnyilvantartas-card.js"
-CARD_URL = f"{FRONTEND_BASE}/{CARD_FILENAME}?v=0.4.45"
+CORE_FILENAME = "utnyilvantartas-card.js"
+PANEL_FILENAME = "utnyilvantartas-panel.js"
+CORE_URL = f"{FRONTEND_BASE}/{CORE_FILENAME}?v=0.4.46"
+PANEL_URL = f"{FRONTEND_BASE}/{PANEL_FILENAME}?v=0.4.46"
 PANEL_PATH = "utnyilvantartas"
 PANEL_ELEMENT = "utnyilvantartas-card"
 
 
 async def async_register_frontend(hass: HomeAssistant) -> None:
     """Serve the JS and register the sidebar panel."""
-    card_path = FRONTEND_DIR / CARD_FILENAME
-    if not card_path.exists():
-        raise RuntimeError(f"Útnyilvántartás frontend fájl nem található: {card_path}")
+    core_path = FRONTEND_DIR / CORE_FILENAME
+    panel_path = FRONTEND_DIR / PANEL_FILENAME
+    if not core_path.exists():
+        raise RuntimeError(f"Útnyilvántartás frontend fájl nem található: {core_path}")
+    if not panel_path.exists():
+        raise RuntimeError(f"Útnyilvántartás panel fájl nem található: {panel_path}")
 
     try:
         await hass.http.async_register_static_paths(
@@ -31,8 +36,10 @@ async def async_register_frontend(hass: HomeAssistant) -> None:
     except RuntimeError:
         pass
 
+    # Keep the proven v0.4.45 card implementation as the core element. The
+    # panel module loaded below only adds multi-car selection on top of it.
     try:
-        frontend.add_extra_js_url(hass, CARD_URL)
+        frontend.add_extra_js_url(hass, CORE_URL)
     except Exception as err:
         _LOGGER.debug("Útnyilvántartás extra JS regisztráció kihagyva: %s", err)
 
@@ -47,13 +54,13 @@ async def async_register_frontend(hass: HomeAssistant) -> None:
         frontend_url_path=PANEL_PATH,
         config={
             "integration": "utnyilvantartas",
-            "version": "0.4.45",
+            "version": "0.4.46",
             "_panel_custom": {
                 "name": PANEL_ELEMENT,
                 "embed_iframe": False,
                 "trust_external": False,
                 "handle_safe_area": False,
-                "module_url": CARD_URL,
+                "module_url": PANEL_URL,
             },
         },
         require_admin=False,
@@ -66,9 +73,10 @@ async def async_register_frontend(hass: HomeAssistant) -> None:
         )
 
     _LOGGER.warning(
-        "Útnyilvántartás frontend OK: panel=/%s module=%s",
+        "Útnyilvántartás frontend OK: panel=/%s module=%s core=%s",
         PANEL_PATH,
-        CARD_URL,
+        PANEL_URL,
+        CORE_URL,
     )
 
 
