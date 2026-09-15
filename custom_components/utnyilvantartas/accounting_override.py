@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from copy import deepcopy
 from datetime import date
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -329,7 +330,7 @@ class UtnyMonthlyAccountingCoordinator(UtnyMonthlyCoordinator):
         summary.updated_at = dt_util.now().isoformat()
 
         if summary.stored_file:
-            await self.hass.async_add_executor_job(
+            write_job = partial(
                 _rewrite_month_payload,
                 Path(summary.stored_file),
                 records=records,
@@ -346,5 +347,6 @@ class UtnyMonthlyAccountingCoordinator(UtnyMonthlyCoordinator):
                 odometer_end_km=summary.odometer_end_km,
                 updated_at=summary.updated_at,
             )
+            await self.hass.async_add_executor_job(write_job)
 
         return summary
