@@ -2,7 +2,7 @@
 
 Home Assistant egyéni integráció **Alapnyomkövetés + Kelio** adatokból készített havi útnyilvántartáshoz.
 
-Aktuális verzió: **0.4.45**
+Aktuális verzió: **0.4.46**
 
 [![Open your Home Assistant instance and open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Mqbretrofit&repository=ha-utnyilvantartas&category=integration)
 
@@ -21,6 +21,7 @@ Aktuális verzió: **0.4.45**
 - NAV havi üzemanyagár és NAV fogyasztási norma támogatás.
 - Havi PDF küldése e-mailben Home Assistant SMTP integráción keresztül.
 - Mentett PDF-ek listázása, előnézete, megnyitása és nyomtatása.
+- Több konfigurált autó közötti választás az oldalsávos panelen.
 - Saját oldalsávos JavaScript dashboard.
 
 ## Telepítés
@@ -48,6 +49,7 @@ A személyes PDF-adatok, címek, rendszám, óraállás és e-mail cím az integ
 
 Az integráció saját oldalsávos panelt regisztrál **Útnyilvántartás** néven. Itt látható többek között:
 
+- a megjelenített autó kiválasztása, ha több Útnyilvántartás konfiguráció van;
 - havi összesítés;
 - napi ELSZÁMOLHATÓ / NEM ELSZÁMOLHATÓ döntés;
 - részletes GPS- és bejárási diagnosztika;
@@ -75,6 +77,15 @@ Az e-mail funkcióhoz előbb állítsd be a Home Assistant **SMTP** integráció
 - levélszöveg.
 
 Használható változók: `{month}`, `{employee}`, `{company}`, `{filename}`.
+
+## 0.4.46
+
+- Az oldalsávos Útnyilvántartás panel automatikusan felismeri az összes konfigurált havi útnyilvántartás-szenzort, és több autó esetén **Autó** választót jelenít meg.
+- Autóváltáskor a teljes panel a kiválasztott konfigurációra vált: havi adatok, napi részletek, hónapváltás, kézi kiegészítés, frissítés és PDF-műveletek ugyanahhoz a `config_entry_id`-hoz tartoznak.
+- A kiválasztott autót a böngésző megjegyzi, és oldalfrissítés után is visszaállítja. Ha egy entitást átneveznek, a mentett `config_entry_id` alapján is megpróbálja megtalálni ugyanazt az autót.
+- Egyetlen konfigurált autó esetén nem jelenik meg felesleges választó.
+- Az explicit `entity:` beállítással használt egyedi dashboard-kártyák továbbra is a megadott entitáshoz vannak rögzítve.
+- A meglévő 0.4.45 kártyalogika külön, változatlan core fájl marad; a multi-car támogatás külön frontend rétegként épül rá.
 
 ## 0.4.45
 
