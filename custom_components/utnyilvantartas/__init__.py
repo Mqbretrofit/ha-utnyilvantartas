@@ -8,6 +8,7 @@ from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.event import async_track_state_change_event
 
+from .accounting_override import UtnyMonthlyAccountingCoordinator
 from .api import AlapnyomkovetesClient
 from .const import (
     CONF_DEVICE_ID,
@@ -46,6 +47,8 @@ _LOGGER = logging.getLogger(__name__)
 SERVICE_SET_MONTH = "set_month"
 SERVICE_SET_MANUAL_DAY = "set_manual_day"
 SERVICE_REMOVE_MANUAL_DAY = "remove_manual_day"
+SERVICE_SET_ACCOUNTING_OVERRIDE = "set_accounting_override"
+SERVICE_REMOVE_ACCOUNTING_OVERRIDE = "remove_accounting_override"
 
 
 def _runtime_for_service(hass: HomeAssistant, entry_id: str | None):
@@ -98,6 +101,36 @@ async def _async_handle_remove_manual_day(hass: HomeAssistant, call: ServiceCall
     await monthly.async_remove_manual_day(day)
 
 
+async def _async_handle_set_accounting_override(hass: HomeAssistant, call: ServiceCall) -> None:
+    day = str(call.data.get("date") or "").strip()
+    morning = bool(call.data.get("morning_eligible", False))
+    evening = bool(call.data.get("evening_eligible", False))
+    note = str(call.data.get("note") or "").strip()
+    entry_id_raw = call.data.get("entry_id")
+    entry_id = str(entry_id_raw).strip() if entry_id_raw else None
+    runtime = _runtime_for_service(hass, entry_id)
+    monthly = runtime["monthly_coordinator"]
+    if not hasattr(monthly, "async_set_accounting_override"):
+        raise HomeAssistantError("Az elszámolási felülbírálás ehhez a verzióhoz nem érhető el.")
+    await monthly.async_set_accounting_override(
+        day,
+        morning_eligible=morning,
+        evening_eligible=evening,
+        note=note,
+    )
+
+
+async def _async_handle_remove_accounting_override(hass: HomeAssistant, call: ServiceCall) -> None:
+    day = str(call.data.get("date") or "").strip()
+    entry_id_raw = call.data.get("entry_id")
+    entry_id = str(entry_id_raw).strip() if entry_id_raw else None
+    runtime = _runtime_for_service(hass, entry_id)
+    monthly = runtime["monthly_coordinator"]
+    if not hasattr(monthly, "async_remove_accounting_override"):
+        raise HomeAssistantError("Az elszámolási felülbírálás ehhez a verzióhoz nem érhető el.")
+    await monthly.async_remove_accounting_override(day)
+
+
 def _entry_value(entry: ConfigEntry, key: str, default=None):
     return entry.options.get(key, entry.data.get(key, default))
 
@@ -126,6 +159,26 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
             await _async_handle_remove_manual_day(hass, call)
 
         hass.services.async_register(DOMAIN, SERVICE_REMOVE_MANUAL_DAY, _remove_manual_day_service)
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_ACCOUNTING_OVERRIDE):
+        async def _set_accounting_override_service(call: ServiceCall) -> None:
+            await _async_handle_set_accounting_override(hass, call)
+
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_ACCOUNTING_OVERRIDE,
+            _set_accounting_override_service,
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_REMOVE_ACCOUNTING_OVERRIDE):
+        async def _remove_accounting_override_service(call: ServiceCall) -> None:
+            await _async_handle_remove_accounting_override(hass, call)
+
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_REMOVE_ACCOUNTING_OVERRIDE,
+            _remove_accounting_override_service,
+        )
 
     return True
 
@@ -156,7 +209,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     kelio_today = str(_entry_value(entry, CONF_KELIO_ENTITY, DEFAULT_KELIO_ENTITY))
     kelio_month = str(_entry_value(entry, CONF_KELIO_MONTH_ENTITY, DEFAULT_KELIO_MONTH_ENTITY))
-    monthly = UtnyMonthlyCoordinator(
+    monthly = UtnyMonthlyAccountingCoordinator(
         hass,
         coordinator,
         kelio_month,
