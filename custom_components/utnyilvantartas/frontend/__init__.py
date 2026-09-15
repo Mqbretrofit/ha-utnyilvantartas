@@ -14,8 +14,8 @@ FRONTEND_DIR = Path(__file__).parent
 FRONTEND_BASE = "/utnyilvantartas_static"
 CORE_FILENAME = "utnyilvantartas-card.js"
 PANEL_FILENAME = "utnyilvantartas-panel.js"
-CORE_URL = f"{FRONTEND_BASE}/{CORE_FILENAME}?v=0.4.46"
-PANEL_URL = f"{FRONTEND_BASE}/{PANEL_FILENAME}?v=0.4.46"
+CORE_URL = f"{FRONTEND_BASE}/{CORE_FILENAME}?v=0.4.47"
+PANEL_URL = f"{FRONTEND_BASE}/{PANEL_FILENAME}?v=0.4.47"
 PANEL_PATH = "utnyilvantartas"
 PANEL_ELEMENT = "utnyilvantartas-card"
 
@@ -36,8 +36,8 @@ async def async_register_frontend(hass: HomeAssistant) -> None:
     except RuntimeError:
         pass
 
-    # Keep the proven v0.4.45 card implementation as the core element. The
-    # panel module loaded below only adds multi-car selection on top of it.
+    # Keep the proven core card implementation unchanged. The panel module
+    # adds multi-car selection and the per-day accounting editor on top of it.
     try:
         frontend.add_extra_js_url(hass, CORE_URL)
     except Exception as err:
@@ -54,7 +54,7 @@ async def async_register_frontend(hass: HomeAssistant) -> None:
         frontend_url_path=PANEL_PATH,
         config={
             "integration": "utnyilvantartas",
-            "version": "0.4.46",
+            "version": "0.4.47",
             "_panel_custom": {
                 "name": PANEL_ELEMENT,
                 "embed_iframe": False,
