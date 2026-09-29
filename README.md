@@ -2,7 +2,7 @@
 
 Home Assistant egyéni integráció **Alapnyomkövetés + Kelio** adatokból készített havi útnyilvántartáshoz.
 
-Aktuális verzió: **0.4.48**
+Aktuális verzió: **0.4.49**
 
 [![Open your Home Assistant instance and open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Mqbretrofit&repository=ha-utnyilvantartas&category=integration)
 
@@ -77,6 +77,12 @@ Az e-mail funkcióhoz előbb állítsd be a Home Assistant **SMTP** integráció
 - levélszöveg.
 
 Használható változók: `{month}`, `{employee}`, `{company}`, `{filename}`.
+
+## 0.4.49
+
+- A repository gyökerébe bekerült a HACS által megkövetelt `hacs.json` manifest.
+- A Home Assistant manifest most külön hibajegy-kezelési hivatkozást is tartalmaz.
+- A 0.4.48 ellenőrzött napi elszámolási javítása változatlanul része a kiadásnak.
 
 ## 0.4.48
 
