@@ -254,6 +254,23 @@ if (Card && !Card.prototype.__utnyMultiCarPatched) {
     return Array.isArray(records) ? records : [];
   };
 
+  proto._utnyWaitForAccountingOverride = async function (date, expected, timeoutMs = 12000) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() <= deadline) {
+      const saved = this._utnyAccountingRecords().find((item) => item?.date === date);
+      if (
+        saved?.accounting_override === true
+        && saved.morning_commute_eligible === expected.morning
+        && saved.evening_commute_eligible === expected.evening
+        && String(saved.accounting_override_note || "").trim() === expected.note
+      ) {
+        return saved;
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+    }
+    return null;
+  };
+
   proto._utnyCloseAccountingEditor = function () {
     this.shadowRoot?.querySelector(".utny-accounting-overlay")?.remove();
     this._interactionHover = false;
@@ -322,6 +339,7 @@ if (Card && !Card.prototype.__utnyMultiCarPatched) {
         <div class="utny-accounting-presets">
           <button type="button" id="utny-account-none"><ha-icon icon="mdi:cash-remove"></ha-icon> Egyik út sem elszámolható</button>
         </div>
+        <div id="utny-account-status" class="utny-accounting-status" role="status" aria-live="polite" hidden></div>
         <div class="utny-accounting-actions">
           ${overridden ? `<button type="button" id="utny-account-reset" class="reset"><ha-icon icon="mdi:restore"></ha-icon> Automatikus visszaállítása</button>` : ""}
           <button type="button" id="utny-account-cancel" class="cancel">Mégse</button>
@@ -331,7 +349,11 @@ if (Card && !Card.prototype.__utnyMultiCarPatched) {
     `;
     root.appendChild(overlay);
 
-    const close = () => this._utnyCloseAccountingEditor();
+    let saving = false;
+    const close = () => {
+      if (saving) return;
+      this._utnyCloseAccountingEditor();
+    };
     overlay.querySelector(".utny-accounting-close")?.addEventListener("click", close);
     overlay.querySelector("#utny-account-cancel")?.addEventListener("click", close);
     overlay.addEventListener("click", (event) => {
@@ -351,6 +373,14 @@ if (Card && !Card.prototype.__utnyMultiCarPatched) {
       });
     };
 
+    const setStatus = (type, text) => {
+      const status = overlay.querySelector("#utny-account-status");
+      if (!status) return;
+      status.hidden = !text;
+      status.className = `utny-accounting-status ${type || ""}`.trim();
+      status.textContent = text || "";
+    };
+
     overlay.querySelector("#utny-account-save")?.addEventListener("click", async () => {
       if (!entryId) {
         this._message = { type: "error", text: "A config entry azonosító nem található." };
@@ -361,27 +391,47 @@ if (Card && !Card.prototype.__utnyMultiCarPatched) {
       const morningInput = overlay.querySelector("#utny-account-morning");
       const eveningInput = overlay.querySelector("#utny-account-evening");
       const noteInput = overlay.querySelector("#utny-account-note");
+      const expected = {
+        morning: !!morningInput?.checked,
+        evening: !!eveningInput?.checked,
+        note: String(noteInput?.value || "").trim(),
+      };
+      saving = true;
       setBusy(true);
+      setStatus("pending", "Mentés és ellenőrzés…");
       this._busy = "accounting";
       try {
-        await this._hass.callService("utnyilvantartas", "set_accounting_override", {
-          date: record.date,
-          morning_eligible: !!morningInput?.checked,
-          evening_eligible: !!eveningInput?.checked,
-          note: String(noteInput?.value || ""),
-          entry_id: entryId,
-        });
-        this._message = { type: "success", text: `Elszámolás módosítva: ${record.date}.` };
-      } catch (err) {
-        this._message = { type: "error", text: `Elszámolás módosítási hiba: ${err?.message || err}` };
-      } finally {
-        this._busy = null;
+        await Promise.race([
+          this._hass.callService("utnyilvantartas", "set_accounting_override", {
+            date: record.date,
+            morning_eligible: expected.morning,
+            evening_eligible: expected.evening,
+            note: expected.note,
+            entry_id: entryId,
+          }),
+          new Promise((_, reject) => window.setTimeout(
+            () => reject(new Error("A mentési kérés 30 másodpercen belül nem fejeződött be.")),
+            30000,
+          )),
+        ]);
+        setStatus("pending", "A mentett adatok visszaellenőrzése…");
+        const saved = await this._utnyWaitForAccountingOverride(record.date, expected);
+        if (!saved) {
+          throw new Error("A visszaolvasott napi rekord nem egyezik a megadott adatokkal.");
+        }
+        this._message = { type: "success", text: `Elszámolás elmentve és ellenőrizve: ${record.date}.` };
         this._interactionHover = false;
         this._pendingRender = false;
         this._lastRelevantSignature = null;
         overlay.remove();
         await new Promise((resolve) => window.setTimeout(resolve, 100));
         this._render();
+      } catch (err) {
+        saving = false;
+        setBusy(false);
+        setStatus("error", `A mentés nem ellenőrizhető: ${err?.message || err}`);
+      } finally {
+        this._busy = null;
       }
     });
 
@@ -494,6 +544,9 @@ if (Card && !Card.prototype.__utnyMultiCarPatched) {
       .utny-accounting-presets { display:flex; flex-wrap:wrap; gap:7px; margin-top:10px; }
       .utny-accounting-presets button { appearance:none; min-height:34px; border-radius:9px; border:1px solid color-mix(in srgb,var(--bad) 30%,var(--divider-color)); background:color-mix(in srgb,var(--bad) 8%,var(--card-background-color)); color:var(--bad); font:inherit; font-size:10px; font-weight:750; cursor:pointer; display:inline-flex; align-items:center; gap:5px; padding:0 10px; }
       .utny-accounting-presets ha-icon { --mdc-icon-size:15px; }
+      .utny-accounting-status { margin-top:10px; padding:9px 10px; border-radius:9px; font-size:10.5px; font-weight:700; line-height:1.4; }
+      .utny-accounting-status.pending { background:color-mix(in srgb,var(--primary-color) 9%,var(--card-background-color)); color:var(--primary-color); }
+      .utny-accounting-status.error { background:color-mix(in srgb,var(--bad) 9%,var(--card-background-color)); color:var(--bad); border:1px solid color-mix(in srgb,var(--bad) 28%,var(--divider-color)); }
       .utny-accounting-actions { display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; margin-top:16px; padding-top:13px; border-top:1px solid var(--divider-color); }
       .utny-accounting-actions button { appearance:none; min-height:40px; border-radius:10px; padding:0 13px; font:inherit; font-size:10.5px; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
       .utny-accounting-actions .save { border:0; background:var(--primary-color); color:white; }
@@ -521,6 +574,6 @@ if (Card && !Card.prototype.__utnyMultiCarPatched) {
 }
 
 console.info(
-  "%c Útnyilvántartás Panel v0.4.47 multi-car + napi elszámolás betöltve ",
+  "%c Útnyilvántartás Panel v0.4.48 multi-car + ellenőrzött napi elszámolás betöltve ",
   "color:#fff;background:#1976d2;font-weight:700;padding:3px 6px;border-radius:4px"
 );

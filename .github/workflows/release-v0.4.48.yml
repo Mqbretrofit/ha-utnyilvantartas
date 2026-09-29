@@ -1,0 +1,70 @@
+name: Publish v0.4.48 release
+
+on:
+  push:
+    paths:
+      - '.github/workflows/release-v0.4.48.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q custom_components/utnyilvantartas
+          node --input-type=module --check < custom_components/utnyilvantartas/frontend/utnyilvantartas-panel.js
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('custom_components/utnyilvantartas')
+          assert json.loads((root / 'manifest.json').read_text(encoding='utf-8'))['version'] == '0.4.48'
+          frontend = (root / 'frontend/__init__.py').read_text(encoding='utf-8')
+          assert frontend.count('?v=0.4.48') == 2
+          assert '"version": "0.4.48"' in frontend
+          panel = (root / 'frontend/utnyilvantartas-panel.js').read_text(encoding='utf-8')
+          assert '_utnyWaitForAccountingOverride' in panel
+          assert 'A mentett adatok visszaellenőrzése' in panel
+          assert 'A mentés nem ellenőrizhető' in panel
+          assert 'Elszámolás elmentve és ellenőrizve' in panel
+          print('Validation OK')
+          PY
+
+      - name: Build install package
+        shell: bash
+        run: |
+          set -euo pipefail
+          zip -qr ha-utnyilvantartas-v0.4.48.zip custom_components README.md .gitignore assets
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/release-notes.md <<'EOF'
+          ## Útnyilvántartás v0.4.48
+
+          Ellenőrzött mentés a napi elszámolási szerkesztőben.
+
+          ### Változások
+          - mentés után a panel visszaolvassa az adott napi rekordot;
+          - csak a reggeli, esti és indok mezők pontos egyezésekor zárja be a szerkesztőablakot;
+          - mentési vagy ellenőrzési hibánál az ablak nyitva marad, a mezők újra szerkeszthetők;
+          - az ablakban konkrét hibaüzenet jelenik meg;
+          - a beragadt szolgáltatáshívás 30 másodperc után hibával visszatér;
+          - a Kelio/GPS-adatok és a 0.4.47 többi működő funkciója változatlan marad.
+          EOF
+          gh release create v0.4.48 \
+            ha-utnyilvantartas-v0.4.48.zip \
+            --target main \
+            --title "Útnyilvántartás v0.4.48" \
+            --notes-file /tmp/release-notes.md \
+            --latest
