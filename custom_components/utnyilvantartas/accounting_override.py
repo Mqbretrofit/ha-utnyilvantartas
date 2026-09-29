@@ -88,9 +88,56 @@ def _apply_accounting_override(
     """Apply only the accounting result; preserve Kelio/GPS evidence unchanged."""
     result = deepcopy(record)
 
-    automatic_morning = result.get("morning_commute_eligible")
-    automatic_evening = result.get("evening_commute_eligible")
-    automatic_reason = str(result.get("reason") or "")
+    # Editing an existing override must keep the original automatic decision,
+    # not promote the previous manual values to the automatic baseline.
+    already_overridden = result.get("accounting_override") is True
+    automatic_commute = (
+        result.get("automatic_commute_eligible")
+        if already_overridden
+        else result.get("commute_eligible")
+    )
+    automatic_morning = (
+        result.get("automatic_morning_commute_eligible")
+        if already_overridden
+        else result.get("morning_commute_eligible")
+    )
+    automatic_evening = (
+        result.get("automatic_evening_commute_eligible")
+        if already_overridden
+        else result.get("evening_commute_eligible")
+    )
+    automatic_eligible_legs = int(
+        (
+            result.get("automatic_eligible_legs")
+            if already_overridden
+            else result.get("eligible_legs")
+        )
+        or 0
+    )
+    automatic_ineligible_legs = int(
+        (
+            result.get("automatic_ineligible_legs")
+            if already_overridden
+            else result.get("ineligible_legs")
+        )
+        or 0
+    )
+    automatic_unknown_legs = int(
+        (
+            result.get("automatic_unknown_legs")
+            if already_overridden
+            else result.get("unknown_legs")
+        )
+        or 0
+    )
+    automatic_reason = str(
+        (
+            result.get("automatic_reason")
+            if already_overridden
+            else result.get("reason")
+        )
+        or ""
+    )
 
     morning = bool(override.get("morning_eligible", False))
     evening = bool(override.get("evening_eligible", False))
@@ -103,12 +150,12 @@ def _apply_accounting_override(
             "accounting_override": True,
             "accounting_override_note": note,
             "accounting_override_updated_at": str(override.get("updated_at") or ""),
-            "automatic_commute_eligible": result.get("commute_eligible"),
+            "automatic_commute_eligible": automatic_commute,
             "automatic_morning_commute_eligible": automatic_morning,
             "automatic_evening_commute_eligible": automatic_evening,
-            "automatic_eligible_legs": int(result.get("eligible_legs") or 0),
-            "automatic_ineligible_legs": int(result.get("ineligible_legs") or 0),
-            "automatic_unknown_legs": int(result.get("unknown_legs") or 0),
+            "automatic_eligible_legs": automatic_eligible_legs,
+            "automatic_ineligible_legs": automatic_ineligible_legs,
+            "automatic_unknown_legs": automatic_unknown_legs,
             "automatic_reason": automatic_reason,
             "commute_eligible": _whole_day_state(morning, evening),
             "morning_commute_eligible": morning,
@@ -123,6 +170,45 @@ def _apply_accounting_override(
             ),
         }
     )
+    return result
+
+
+def _restore_automatic_accounting(record: dict[str, Any]) -> dict[str, Any]:
+    """Remove an override while preserving the already fetched Kelio/GPS data."""
+    result = deepcopy(record)
+    if result.get("accounting_override") is not True:
+        return result
+
+    eligible_legs = int(result.get("automatic_eligible_legs") or 0)
+    result.update(
+        {
+            "commute_eligible": result.get("automatic_commute_eligible"),
+            "morning_commute_eligible": result.get(
+                "automatic_morning_commute_eligible"
+            ),
+            "evening_commute_eligible": result.get(
+                "automatic_evening_commute_eligible"
+            ),
+            "eligible_legs": eligible_legs,
+            "ineligible_legs": int(result.get("automatic_ineligible_legs") or 0),
+            "unknown_legs": int(result.get("automatic_unknown_legs") or 0),
+            "eligible_day_equivalent": eligible_legs / 2.0,
+            "reason": str(result.get("automatic_reason") or ""),
+        }
+    )
+    for key in (
+        "accounting_override",
+        "accounting_override_note",
+        "accounting_override_updated_at",
+        "automatic_commute_eligible",
+        "automatic_morning_commute_eligible",
+        "automatic_evening_commute_eligible",
+        "automatic_eligible_legs",
+        "automatic_ineligible_legs",
+        "automatic_unknown_legs",
+        "automatic_reason",
+    ):
+        result.pop(key, None)
     return result
 
 
@@ -188,6 +274,73 @@ class UtnyMonthlyAccountingCoordinator(UtnyMonthlyCoordinator):
             )
         )
 
+    async def _async_publish_cached_accounting(
+        self,
+        summary: MonthlySummary,
+        records: list[dict[str, Any]],
+    ) -> MonthlySummary:
+        """Recalculate accounting totals without refetching Kelio/GPS data."""
+        updated = deepcopy(summary)
+        updated.records = records
+        updated.eligible_legs = sum(
+            int(record.get("eligible_legs") or 0) for record in records
+        )
+        updated.ineligible_legs = sum(
+            int(record.get("ineligible_legs") or 0) for record in records
+        )
+        updated.unknown_legs = sum(
+            int(record.get("unknown_legs") or 0) for record in records
+        )
+        updated.eligible_days = round(updated.eligible_legs / 2.0, 2)
+        updated.ineligible_presence_days = round(updated.ineligible_legs / 2.0, 2)
+        updated.private_commute_km = round(
+            updated.eligible_legs * self.commute_one_way_km,
+            3,
+        )
+        updated.reimbursement_huf = round(
+            updated.private_commute_km * self.reimbursement_huf_per_km,
+            2,
+        )
+
+        ledger_path = Path(self.hass.config.path("utnyilvantartas", "odometer.json"))
+        odometer = await self.hass.async_add_executor_job(
+            update_odometer_ledger,
+            ledger_path,
+            updated.month,
+            self.base_odometer_km,
+            updated.private_commute_km,
+        )
+        updated.odometer_start_km = round(float(odometer["start_km"]), 3)
+        updated.odometer_end_km = round(float(odometer["end_km"]), 3)
+        updated.updated_at = dt_util.now().isoformat()
+
+        if updated.stored_file:
+            override_dates = sorted(
+                str(record.get("date"))
+                for record in records
+                if record.get("accounting_override") is True and record.get("date")
+            )
+            write_job = partial(
+                _rewrite_month_payload,
+                Path(updated.stored_file),
+                records=records,
+                override_dates=override_dates,
+                override_file=self.accounting_overrides_path,
+                eligible_days=updated.eligible_days,
+                ineligible_presence_days=updated.ineligible_presence_days,
+                eligible_legs=updated.eligible_legs,
+                ineligible_legs=updated.ineligible_legs,
+                unknown_legs=updated.unknown_legs,
+                private_commute_km=updated.private_commute_km,
+                reimbursement_huf=updated.reimbursement_huf,
+                odometer_start_km=updated.odometer_start_km,
+                odometer_end_km=updated.odometer_end_km,
+                updated_at=updated.updated_at,
+            )
+            await self.hass.async_add_executor_job(write_job)
+
+        return updated
+
     async def async_set_accounting_override(
         self,
         value: str,
@@ -244,7 +397,17 @@ class UtnyMonthlyAccountingCoordinator(UtnyMonthlyCoordinator):
             self.daily.device_id,
             entries,
         )
-        await self.async_refresh()
+        records = [deepcopy(item) for item in data.records]
+        for index, item in enumerate(records):
+            if item.get("date") == target.isoformat():
+                records[index] = _apply_accounting_override(
+                    item,
+                    entries[target.isoformat()],
+                )
+                break
+
+        updated = await self._async_publish_cached_accounting(data, records)
+        self.async_set_updated_data(updated)
 
     async def async_remove_accounting_override(self, value: str) -> None:
         try:
@@ -253,6 +416,19 @@ class UtnyMonthlyAccountingCoordinator(UtnyMonthlyCoordinator):
             raise HomeAssistantError(
                 "Az elszámolási felülbírálás dátuma YYYY-MM-DD formátumú legyen."
             ) from err
+
+        target_month = target.strftime("%Y-%m")
+        if target_month != self.selected_month:
+            raise HomeAssistantError(
+                f"A szerkesztett nap a megnyitott hónaphoz tartozzon ({self.selected_month})."
+            )
+
+        data = self.data
+        if data is None or data.month != target_month:
+            await self.async_refresh()
+            data = self.data
+        if data is None or data.month != target_month:
+            raise HomeAssistantError("A megnyitott hónap adatai nem érhetők el.")
 
         entries = await self.hass.async_add_executor_job(
             _read_accounting_overrides,
@@ -265,7 +441,14 @@ class UtnyMonthlyAccountingCoordinator(UtnyMonthlyCoordinator):
             self.daily.device_id,
             entries,
         )
-        await self.async_refresh()
+        records = [deepcopy(item) for item in data.records]
+        for index, item in enumerate(records):
+            if item.get("date") == target.isoformat():
+                records[index] = _restore_automatic_accounting(item)
+                break
+
+        updated = await self._async_publish_cached_accounting(data, records)
+        self.async_set_updated_data(updated)
 
     async def _async_update_data(self) -> MonthlySummary:
         # First run the proven Kelio + GPS calculation unchanged.
@@ -300,53 +483,4 @@ class UtnyMonthlyAccountingCoordinator(UtnyMonthlyCoordinator):
         if not applied_dates:
             return summary
 
-        eligible_legs = sum(int(record.get("eligible_legs") or 0) for record in records)
-        ineligible_legs = sum(int(record.get("ineligible_legs") or 0) for record in records)
-        unknown_legs = sum(int(record.get("unknown_legs") or 0) for record in records)
-        eligible_days = round(eligible_legs / 2.0, 2)
-        ineligible_presence_days = round(ineligible_legs / 2.0, 2)
-        private_commute_km = round(eligible_legs * self.commute_one_way_km, 3)
-        reimbursement_huf = round(private_commute_km * self.reimbursement_huf_per_km, 2)
-
-        ledger_path = Path(self.hass.config.path("utnyilvantartas", "odometer.json"))
-        odometer = await self.hass.async_add_executor_job(
-            update_odometer_ledger,
-            ledger_path,
-            summary.month,
-            self.base_odometer_km,
-            private_commute_km,
-        )
-
-        summary.records = records
-        summary.eligible_legs = eligible_legs
-        summary.ineligible_legs = ineligible_legs
-        summary.unknown_legs = unknown_legs
-        summary.eligible_days = eligible_days
-        summary.ineligible_presence_days = ineligible_presence_days
-        summary.private_commute_km = private_commute_km
-        summary.reimbursement_huf = reimbursement_huf
-        summary.odometer_start_km = round(float(odometer["start_km"]), 3)
-        summary.odometer_end_km = round(float(odometer["end_km"]), 3)
-        summary.updated_at = dt_util.now().isoformat()
-
-        if summary.stored_file:
-            write_job = partial(
-                _rewrite_month_payload,
-                Path(summary.stored_file),
-                records=records,
-                override_dates=sorted(applied_dates),
-                override_file=self.accounting_overrides_path,
-                eligible_days=eligible_days,
-                ineligible_presence_days=ineligible_presence_days,
-                eligible_legs=eligible_legs,
-                ineligible_legs=ineligible_legs,
-                unknown_legs=unknown_legs,
-                private_commute_km=private_commute_km,
-                reimbursement_huf=reimbursement_huf,
-                odometer_start_km=summary.odometer_start_km,
-                odometer_end_km=summary.odometer_end_km,
-                updated_at=summary.updated_at,
-            )
-            await self.hass.async_add_executor_job(write_job)
-
-        return summary
+        return await self._async_publish_cached_accounting(summary, records)

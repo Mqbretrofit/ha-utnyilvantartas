@@ -1,0 +1,75 @@
+name: Publish v0.4.50 release
+
+on:
+  push:
+    paths:
+      - '.github/workflows/release-v0.4.50.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q custom_components/utnyilvantartas
+          node --input-type=module --check < custom_components/utnyilvantartas/frontend/utnyilvantartas-panel.js
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('custom_components/utnyilvantartas')
+          assert json.loads(Path('hacs.json').read_text(encoding='utf-8'))['name'] == 'Útnyilvántartás'
+          manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
+          assert manifest['version'] == '0.4.50'
+          frontend = (root / 'frontend/__init__.py').read_text(encoding='utf-8')
+          assert frontend.count('?v=0.4.50') == 2
+          assert '"version": "0.4.50"' in frontend
+          accounting = (root / 'accounting_override.py').read_text(encoding='utf-8')
+          assert '_async_publish_cached_accounting' in accounting
+          assert '_restore_automatic_accounting' in accounting
+          set_method = accounting.split('async def async_set_accounting_override', 1)[1].split('async def async_remove_accounting_override', 1)[0]
+          remove_method = accounting.split('async def async_remove_accounting_override', 1)[1].split('async def _async_update_data', 1)[0]
+          assert 'self.async_set_updated_data(updated)' in set_method
+          assert 'self.async_set_updated_data(updated)' in remove_method
+          assert set_method.count('await self.async_refresh()') == 1
+          assert remove_method.count('await self.async_refresh()') == 1
+          print('Validation OK')
+          PY
+
+      - name: Build install package
+        shell: bash
+        run: |
+          set -euo pipefail
+          zip -qr ha-utnyilvantartas-v0.4.50.zip custom_components README.md hacs.json .gitignore assets
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/release-notes.md <<'EOF'
+          ## Útnyilvántartás v0.4.50
+
+          Gyors kézi elszámolási mentés teljes havi GPS-újraszámítás nélkül.
+
+          ### Változások
+          - a kézi javítás mentése és visszaállítása csak a már betöltött havi rekordokat számolja újra;
+          - nincs ismételt Kelio- vagy Alapnyomkövetés-lekérés;
+          - a havi kilométer, térítés és óraállás azonnal frissül;
+          - az eredeti automatikus GPS-döntés ismételt szerkesztés után is megmarad;
+          - a mentés utáni visszaellenőrzés továbbra is aktív.
+          EOF
+          gh release create v0.4.50 \
+            ha-utnyilvantartas-v0.4.50.zip \
+            --target main \
+            --title "Útnyilvántartás v0.4.50" \
+            --notes-file /tmp/release-notes.md \
+            --latest

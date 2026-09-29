@@ -2,7 +2,7 @@
 
 Home Assistant egyéni integráció **Alapnyomkövetés + Kelio** adatokból készített havi útnyilvántartáshoz.
 
-Aktuális verzió: **0.4.49**
+Aktuális verzió: **0.4.50**
 
 [![Open your Home Assistant instance and open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Mqbretrofit&repository=ha-utnyilvantartas&category=integration)
 
@@ -77,6 +77,13 @@ Az e-mail funkcióhoz előbb állítsd be a Home Assistant **SMTP** integráció
 - levélszöveg.
 
 Használható változók: `{month}`, `{employee}`, `{company}`, `{filename}`.
+
+## 0.4.50
+
+- A napi kézi elszámolási javítás mentése és visszaállítása többé nem indít teljes havi Kelio/GPS-újraszámítást.
+- Csak az érintett rekord, a havi összesítők, a térítés és az óraállás frissül, majd a Home Assistant azonnal megkapja az új állapotot.
+- Egy már felülbírált nap ismételt szerkesztése továbbra is megőrzi az eredeti automatikus GPS-döntést.
+- A mentés utáni visszaellenőrzés változatlanul megmaradt.
 
 ## 0.4.49
 

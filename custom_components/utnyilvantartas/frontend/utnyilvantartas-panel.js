@@ -574,6 +574,6 @@ if (Card && !Card.prototype.__utnyMultiCarPatched) {
 }
 
 console.info(
-  "%c Útnyilvántartás Panel v0.4.49 multi-car + ellenőrzött napi elszámolás betöltve ",
+  "%c Útnyilvántartás Panel v0.4.50 multi-car + gyors ellenőrzött napi elszámolás betöltve ",
   "color:#fff;background:#1976d2;font-weight:700;padding:3px 6px;border-radius:4px"
 );
