@@ -9,7 +9,7 @@
   "requirements": [
     "reportlab==4.4.9"
   ],
-  "version": "0.4.50",
+  "version": "0.4.51",
   "dependencies": [
     "frontend",
     "http"

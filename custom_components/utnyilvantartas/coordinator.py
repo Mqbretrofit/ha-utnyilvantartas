@@ -5,10 +5,12 @@ import json
 import logging
 import html
 import re
+from copy import deepcopy
 from time import monotonic
 from calendar import monthrange
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
+from functools import partial
 from math import asin, cos, radians, sin, sqrt
 from pathlib import Path
 from xml.sax.saxutils import escape as xml_escape
@@ -1680,6 +1682,82 @@ def _manual_record(day_key: str, item: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _no_presence_record(day_key: str) -> dict[str, Any]:
+    """Return the canonical record for a day without Kelio/manual presence."""
+    return {
+        "date": day_key,
+        "kelio_present": False,
+        "presence_source": None,
+        "manual_override": False,
+        "manual_note": None,
+        "gps_checked": False,
+        "commute_eligible": False,
+        "morning_commute_eligible": False,
+        "evening_commute_eligible": False,
+        "eligible_legs": 0,
+        "ineligible_legs": 2,
+        "unknown_legs": 0,
+        "eligible_day_equivalent": 0.0,
+        "reason": (
+            "Kelio: nincs igazolt jelenlét → egyik bejárási út sem "
+            "elszámolható (GPS nem kerül értékelésre)"
+        ),
+        "company_car": None,
+    }
+
+
+def _rewrite_manual_month_payload(
+    path: Path,
+    *,
+    records: list[dict[str, Any]],
+    presence_dates: list[str],
+    manual_dates: list[str],
+    manual_file: Path,
+    presence_days: int,
+    eligible_days: float,
+    ineligible_presence_days: float,
+    eligible_legs: int,
+    ineligible_legs: int,
+    unknown_legs: int,
+    private_commute_km: float,
+    reimbursement_huf: float,
+    odometer_start_km: float,
+    odometer_end_km: float,
+    updated_at: str,
+) -> None:
+    """Update only cached monthly fields affected by a manual presence day."""
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        payload = {}
+    if not isinstance(payload, dict):
+        payload = {}
+
+    payload.update(
+        {
+            "updated_at": updated_at,
+            "kelio_presence_dates": presence_dates,
+            "manual_presence_dates": manual_dates,
+            "effective_presence_dates": sorted(set(presence_dates) | set(manual_dates)),
+            "manual_override_file": str(manual_file),
+            "presence_days": presence_days,
+            "eligible_days": eligible_days,
+            "ineligible_presence_days": ineligible_presence_days,
+            "eligible_legs": eligible_legs,
+            "ineligible_legs": ineligible_legs,
+            "unknown_legs": unknown_legs,
+            "private_commute_km": private_commute_km,
+            "reimbursement_huf": reimbursement_huf,
+            "odometer": {
+                "start_km": round(odometer_start_km, 3),
+                "end_km": round(odometer_end_km, 3),
+            },
+            "records": records,
+        }
+    )
+    _write_json(path, payload)
+
+
 
 def _scan_saved_pdfs(root: Path) -> list[dict[str, Any]]:
     """List generated monthly PDFs without exposing arbitrary files."""
@@ -1750,6 +1828,73 @@ class UtnyMonthlyCoordinator(DataUpdateCoordinator[MonthlySummary]):
             )
         )
 
+    async def _async_publish_cached_manual_days(
+        self,
+        summary: MonthlySummary,
+        records: list[dict[str, Any]],
+        manual_dates: set[str],
+    ) -> MonthlySummary:
+        """Publish a manual-day change without refetching Kelio/GPS history."""
+        updated = deepcopy(summary)
+        updated.records = sorted(records, key=lambda item: str(item.get("date") or ""))
+        updated.manual_dates = sorted(manual_dates)
+        updated.presence_days = len(set(updated.presence_dates) | manual_dates)
+        updated.eligible_legs = sum(
+            int(record.get("eligible_legs") or 0) for record in updated.records
+        )
+        updated.ineligible_legs = sum(
+            int(record.get("ineligible_legs") or 0) for record in updated.records
+        )
+        updated.unknown_legs = sum(
+            int(record.get("unknown_legs") or 0) for record in updated.records
+        )
+        updated.eligible_days = round(updated.eligible_legs / 2.0, 2)
+        updated.ineligible_presence_days = round(updated.ineligible_legs / 2.0, 2)
+        updated.private_commute_km = round(
+            updated.eligible_legs * self.commute_one_way_km,
+            3,
+        )
+        updated.reimbursement_huf = round(
+            updated.private_commute_km * self.reimbursement_huf_per_km,
+            2,
+        )
+
+        ledger_path = Path(self.hass.config.path("utnyilvantartas", "odometer.json"))
+        odometer = await self.hass.async_add_executor_job(
+            update_odometer_ledger,
+            ledger_path,
+            updated.month,
+            self.base_odometer_km,
+            updated.private_commute_km,
+        )
+        updated.odometer_start_km = round(float(odometer["start_km"]), 3)
+        updated.odometer_end_km = round(float(odometer["end_km"]), 3)
+        updated.updated_at = dt_util.now().isoformat()
+
+        if updated.stored_file:
+            write_job = partial(
+                _rewrite_manual_month_payload,
+                Path(updated.stored_file),
+                records=updated.records,
+                presence_dates=sorted(updated.presence_dates),
+                manual_dates=updated.manual_dates,
+                manual_file=self.manual_overrides_path,
+                presence_days=updated.presence_days,
+                eligible_days=updated.eligible_days,
+                ineligible_presence_days=updated.ineligible_presence_days,
+                eligible_legs=updated.eligible_legs,
+                ineligible_legs=updated.ineligible_legs,
+                unknown_legs=updated.unknown_legs,
+                private_commute_km=updated.private_commute_km,
+                reimbursement_huf=updated.reimbursement_huf,
+                odometer_start_km=updated.odometer_start_km,
+                odometer_end_km=updated.odometer_end_km,
+                updated_at=updated.updated_at,
+            )
+            await self.hass.async_add_executor_job(write_job)
+
+        return updated
+
     async def async_set_manual_day(
         self,
         value: str,
@@ -1773,6 +1918,13 @@ class UtnyMonthlyCoordinator(DataUpdateCoordinator[MonthlySummary]):
                 f"A kézi nap a megnyitott hónaphoz tartozzon ({self.selected_month})."
             )
 
+        data = self.data
+        if data is None or data.month != target_month:
+            await self.async_refresh()
+            data = self.data
+        if data is None or data.month != target_month:
+            raise HomeAssistantError("A megnyitott hónap adatai nem érhetők el.")
+
         # If Kelio already contains this day, automatic data must win.
         source = self.hass.states.get(self.kelio_month_entity)
         if source is not None:
@@ -1781,6 +1933,10 @@ class UtnyMonthlyCoordinator(DataUpdateCoordinator[MonthlySummary]):
                 raise HomeAssistantError(
                     "Ehhez a naphoz már van Kelio jelenlét. Kézi kiegészítés nem szükséges."
                 )
+        if target.isoformat() in data.presence_dates:
+            raise HomeAssistantError(
+                "Ehhez a naphoz már van Kelio jelenlét. Kézi kiegészítés nem szükséges."
+            )
 
         entries = await self.hass.async_add_executor_job(
             _read_manual_overrides, self.manual_overrides_path
@@ -1797,15 +1953,42 @@ class UtnyMonthlyCoordinator(DataUpdateCoordinator[MonthlySummary]):
             self.daily.device_id,
             entries,
         )
-        # Finish the monthly recalculation before the service returns so the
-        # dashboard immediately receives the new state after Mentés/Felülírás.
-        await self.async_refresh()
+        records = [deepcopy(record) for record in data.records]
+        manual_record = _manual_record(target.isoformat(), entries[target.isoformat()])
+        for index, record in enumerate(records):
+            if record.get("date") == target.isoformat():
+                records[index] = manual_record
+                break
+        else:
+            records.append(manual_record)
+
+        manual_dates = set(data.manual_dates)
+        manual_dates.add(target.isoformat())
+        updated = await self._async_publish_cached_manual_days(
+            data,
+            records,
+            manual_dates,
+        )
+        self.async_set_updated_data(updated)
 
     async def async_remove_manual_day(self, value: str) -> None:
         try:
             target = date.fromisoformat(str(value or "").strip())
         except ValueError as err:
             raise HomeAssistantError("A kézi kiegészítés dátuma YYYY-MM-DD formátumú legyen.") from err
+
+        target_month = target.strftime("%Y-%m")
+        if target_month != self.selected_month:
+            raise HomeAssistantError(
+                f"A kézi nap a megnyitott hónaphoz tartozzon ({self.selected_month})."
+            )
+
+        data = self.data
+        if data is None or data.month != target_month:
+            await self.async_refresh()
+            data = self.data
+        if data is None or data.month != target_month:
+            raise HomeAssistantError("A megnyitott hónap adatai nem érhetők el.")
 
         entries = await self.hass.async_add_executor_job(
             _read_manual_overrides, self.manual_overrides_path
@@ -1817,8 +2000,24 @@ class UtnyMonthlyCoordinator(DataUpdateCoordinator[MonthlySummary]):
             self.daily.device_id,
             entries,
         )
-        # Deletion must also finish the monthly recalculation before returning.
-        await self.async_refresh()
+        records = [deepcopy(record) for record in data.records]
+        if target.isoformat() not in data.presence_dates:
+            replacement = _no_presence_record(target.isoformat())
+            for index, record in enumerate(records):
+                if record.get("date") == target.isoformat():
+                    records[index] = replacement
+                    break
+            else:
+                records.append(replacement)
+
+        manual_dates = set(data.manual_dates)
+        manual_dates.discard(target.isoformat())
+        updated = await self._async_publish_cached_manual_days(
+            data,
+            records,
+            manual_dates,
+        )
+        self.async_set_updated_data(updated)
 
     @staticmethod
     def _validate_month(value: str) -> str:
@@ -2087,25 +2286,7 @@ class UtnyMonthlyCoordinator(DataUpdateCoordinator[MonthlySummary]):
                 continue
 
             if day_key not in effective_presence_dates:
-                records.append(
-                    {
-                        "date": day_key,
-                        "kelio_present": False,
-                        "presence_source": None,
-                        "manual_override": False,
-                        "manual_note": None,
-                        "gps_checked": False,
-                        "commute_eligible": False,
-                        "morning_commute_eligible": False,
-                        "evening_commute_eligible": False,
-                        "eligible_legs": 0,
-                        "ineligible_legs": 2,
-                        "unknown_legs": 0,
-                        "eligible_day_equivalent": 0.0,
-                        "reason": "Kelio: nincs igazolt jelenlét → egyik bejárási út sem elszámolható (GPS nem kerül értékelésre)",
-                        "company_car": None,
-                    }
-                )
+                records.append(_no_presence_record(day_key))
                 continue
 
             try:

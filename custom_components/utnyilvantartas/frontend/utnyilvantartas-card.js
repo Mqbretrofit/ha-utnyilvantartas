@@ -16,6 +16,7 @@ class UtnyilvantartasCard extends HTMLElement {
       evening: true,
       note: "Hónap végi kézi kiegészítés – a Kelio aznapi bejegyzése még nem érhető el",
     };
+    this._manualStatus = null;
     this._manualEditing = false;
     this._actionsHover = false;
     this._interactionHover = false;
@@ -338,6 +339,9 @@ class UtnyilvantartasCard extends HTMLElement {
 
   _beginManualEdit() {
     this._manualEditing = true;
+    if (this._manualStatus?.type === "success") {
+      this._setManualStatus(null, "");
+    }
   }
 
   _syncManualFormFromDom() {
@@ -371,35 +375,97 @@ class UtnyilvantartasCard extends HTMLElement {
     return `${y}-${m}-${day}`;
   }
 
+  _escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  _setManualStatus(type, text) {
+    this._manualStatus = text ? { type: type || "", text: String(text) } : null;
+    const status = this.shadowRoot?.getElementById("manual-status");
+    if (!status) return;
+    status.hidden = !text;
+    status.className = `manual-status ${type || ""}`.trim();
+    status.textContent = text || "";
+  }
+
+  _setManualBusy(busy) {
+    this.shadowRoot?.querySelectorAll("#manual-form button, #manual-form input, #manual-form textarea")
+      .forEach((control) => { control.disabled = !!busy; });
+  }
+
+  async _waitForManualState(date, expected, timeoutMs = 8000) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() <= deadline) {
+      const monthly = this._state(this._findMonthly());
+      const manualDates = this._attr(monthly, "manual_presence_dates", []);
+      const records = this._attr(monthly, "records", []);
+      const record = Array.isArray(records)
+        ? records.find((item) => item?.date === date)
+        : null;
+      const listed = Array.isArray(manualDates) && manualDates.includes(date);
+
+      if (expected.present) {
+        if (
+          listed
+          && record?.manual_override === true
+          && record.morning_commute_eligible === expected.morning
+          && record.evening_commute_eligible === expected.evening
+        ) {
+          return record;
+        }
+      } else if (!listed && record?.manual_override !== true) {
+        return record || true;
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+    }
+    return null;
+  }
+
   async _saveManual(entryId) {
     this._syncManualFormFromDom();
     if (!entryId) {
-      this._message = { type: "error", text: "A config entry azonosító nem található." };
-      this._render();
+      this._setManualStatus("error", "A config entry azonosító nem található.");
       return;
     }
     const date = String(this._manualForm.date || "").trim();
     if (!date) {
-      this._message = { type: "error", text: "Adj meg dátumot a kézi kiegészítéshez." };
-      this._render();
+      this._setManualStatus("error", "Adj meg dátumot a kézi kiegészítéshez.");
       return;
     }
+    const expected = {
+      present: true,
+      morning: !!this._manualForm.morning,
+      evening: !!this._manualForm.evening,
+    };
     try {
       this._busy = "manual";
+      this._message = null;
+      this._setManualBusy(true);
+      this._setManualStatus("pending", "Kézi kiegészítés mentése…");
       await this._hass.callService("utnyilvantartas", "set_manual_day", {
         date,
-        morning_eligible: !!this._manualForm.morning,
-        evening_eligible: !!this._manualForm.evening,
+        morning_eligible: expected.morning,
+        evening_eligible: expected.evening,
         note: String(this._manualForm.note || ""),
         entry_id: entryId,
       });
-      this._message = { type: "success", text: `Kézi kiegészítés mentve: ${date}.` };
+      this._setManualStatus("pending", "A mentett kiegészítés visszaellenőrzése…");
+      const saved = await this._waitForManualState(date, expected);
+      if (!saved) {
+        throw new Error("A visszaolvasott havi rekord nem tartalmazza a kézi kiegészítést.");
+      }
+      this._setManualStatus("success", `Kézi kiegészítés elmentve és ellenőrizve: ${date}.`);
     } catch (err) {
-      this._message = { type: "error", text: `Kézi kiegészítés hiba: ${err?.message || err}` };
+      this._setManualStatus("error", `Kézi kiegészítés hiba: ${err?.message || err}`);
     } finally {
       this._busy = null;
       this._manualEditing = false;
       this._pendingRender = false;
+      this._setManualBusy(false);
       await new Promise(resolve => window.setTimeout(resolve, 120));
       this._render();
     }
@@ -407,26 +473,37 @@ class UtnyilvantartasCard extends HTMLElement {
 
   async _removeManual(entryId) {
     this._syncManualFormFromDom();
-    if (!entryId) return;
+    if (!entryId) {
+      this._setManualStatus("error", "A config entry azonosító nem található.");
+      return;
+    }
     const date = String(this._manualForm.date || "").trim();
     if (!date) {
-      this._message = { type: "error", text: "Adj meg dátumot a törléshez." };
-      this._render();
+      this._setManualStatus("error", "Adj meg dátumot a törléshez.");
       return;
     }
     try {
       this._busy = "manual";
+      this._message = null;
+      this._setManualBusy(true);
+      this._setManualStatus("pending", "Kézi kiegészítés törlése…");
       await this._hass.callService("utnyilvantartas", "remove_manual_day", {
         date,
         entry_id: entryId,
       });
-      this._message = { type: "success", text: `Kézi kiegészítés törölve: ${date}.` };
+      this._setManualStatus("pending", "A törlés visszaellenőrzése…");
+      const removed = await this._waitForManualState(date, { present: false });
+      if (!removed) {
+        throw new Error("A kézi kiegészítés továbbra is szerepel a havi rekordban.");
+      }
+      this._setManualStatus("success", `Kézi kiegészítés törölve és ellenőrizve: ${date}.`);
     } catch (err) {
-      this._message = { type: "error", text: `Kézi kiegészítés törlési hiba: ${err?.message || err}` };
+      this._setManualStatus("error", `Kézi kiegészítés törlési hiba: ${err?.message || err}`);
     } finally {
       this._busy = null;
       this._manualEditing = false;
       this._pendingRender = false;
+      this._setManualBusy(false);
       await new Promise(resolve => window.setTimeout(resolve, 120));
       this._render();
     }
@@ -990,6 +1067,7 @@ class UtnyilvantartasCard extends HTMLElement {
                 </button>
               </div>
             </div>
+            <div id="manual-status" class="manual-status ${this._manualStatus?.type || ""}" ${this._manualStatus ? "" : "hidden"}>${this._manualStatus ? this._escapeHtml(this._manualStatus.text) : ""}</div>
             <div class="manual-active">
               <b>Aktív kézi napok ebben a hónapban:</b>
               ${manualDates.length ? manualDates.map(d => `<span>${this._day(d)}</span>`).join("") : "<em>nincs</em>"}
@@ -1106,6 +1184,11 @@ class UtnyilvantartasCard extends HTMLElement {
         .manual-save { background:#f9a825; color:#111; }
         .manual-remove { background:color-mix(in srgb,var(--bad) 11%,var(--card-background-color)); color:var(--bad); border:1px solid color-mix(in srgb,var(--bad) 30%,var(--divider-color)); }
         .manual-save:disabled,.manual-remove:disabled { opacity:.55; cursor:wait; }
+        .manual-status { margin-top:10px; padding:9px 11px; border-radius:9px; font-size:10.5px; font-weight:700; line-height:1.4; }
+        .manual-status[hidden] { display:none; }
+        .manual-status.pending { color:#8a5a00; background:color-mix(in srgb,#f9a825 15%,var(--card-background-color)); border:1px solid color-mix(in srgb,#f9a825 42%,var(--divider-color)); }
+        .manual-status.success { color:var(--success-color,#2e7d32); background:color-mix(in srgb,var(--success-color,#2e7d32) 10%,var(--card-background-color)); border:1px solid color-mix(in srgb,var(--success-color,#2e7d32) 32%,var(--divider-color)); }
+        .manual-status.error { color:var(--error-color,#d32f2f); background:color-mix(in srgb,var(--error-color,#d32f2f) 10%,var(--card-background-color)); border:1px solid color-mix(in srgb,var(--error-color,#d32f2f) 32%,var(--divider-color)); }
         .manual-active { display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin-top:10px; font-size:10px; color:var(--secondary-text-color); }
         .manual-active span,.manual-mark { display:inline-flex; align-items:center; justify-content:center; border-radius:999px; padding:3px 7px; background:color-mix(in srgb,#f9a825 18%,var(--card-background-color)); color:#9a6500; border:1px solid color-mix(in srgb,#f9a825 42%,var(--divider-color)); font-size:9px; font-weight:800; white-space:nowrap; }
         .manual-active em { opacity:.75; }

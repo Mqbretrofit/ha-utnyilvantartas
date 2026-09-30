@@ -14,8 +14,8 @@ FRONTEND_DIR = Path(__file__).parent
 FRONTEND_BASE = "/utnyilvantartas_static"
 CORE_FILENAME = "utnyilvantartas-card.js"
 PANEL_FILENAME = "utnyilvantartas-panel.js"
-CORE_URL = f"{FRONTEND_BASE}/{CORE_FILENAME}?v=0.4.50"
-PANEL_URL = f"{FRONTEND_BASE}/{PANEL_FILENAME}?v=0.4.50"
+CORE_URL = f"{FRONTEND_BASE}/{CORE_FILENAME}?v=0.4.51"
+PANEL_URL = f"{FRONTEND_BASE}/{PANEL_FILENAME}?v=0.4.51"
 PANEL_PATH = "utnyilvantartas"
 PANEL_ELEMENT = "utnyilvantartas-card"
 
@@ -54,7 +54,7 @@ async def async_register_frontend(hass: HomeAssistant) -> None:
         frontend_url_path=PANEL_PATH,
         config={
             "integration": "utnyilvantartas",
-            "version": "0.4.50",
+            "version": "0.4.51",
             "_panel_custom": {
                 "name": PANEL_ELEMENT,
                 "embed_iframe": False,
