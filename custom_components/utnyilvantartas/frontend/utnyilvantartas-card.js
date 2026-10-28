@@ -375,6 +375,15 @@ class UtnyilvantartasCard extends HTMLElement {
     return `${y}-${m}-${day}`;
   }
 
+  _monthEndIso(month) {
+    const match = String(month || "").match(/^(\d{4})-(\d{2})$/);
+    if (!match) return this._todayIso();
+    const year = Number(match[1]);
+    const monthNo = Number(match[2]);
+    const lastDay = new Date(year, monthNo, 0).getDate();
+    return `${match[1]}-${match[2]}-${String(lastDay).padStart(2, "0")}`;
+  }
+
   _escapeHtml(value) {
     return String(value ?? "")
       .replace(/&/g, "&amp;")
@@ -1042,7 +1051,7 @@ class UtnyilvantartasCard extends HTMLElement {
             <div class="manual-form" id="manual-form">
               <label>
                 <span>Dátum</span>
-                <input id="manual-date" type="date" value="${this._manualForm.date}" max="${this._todayIso()}" autocomplete="off">
+                <input id="manual-date" type="date" value="${this._manualForm.date}" max="${this._monthEndIso(month)}" autocomplete="off">
               </label>
               <label class="manual-check">
                 <input id="manual-morning" type="checkbox" ${this._manualForm.morning ? "checked" : ""}>

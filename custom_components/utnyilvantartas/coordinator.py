@@ -1910,10 +1910,6 @@ class UtnyMonthlyCoordinator(DataUpdateCoordinator[MonthlySummary]):
         except ValueError as err:
             raise HomeAssistantError("A kézi kiegészítés dátuma YYYY-MM-DD formátumú legyen.") from err
 
-        today = dt_util.now().date()
-        if target > today:
-            raise HomeAssistantError("Jövőbeli nap nem adható hozzá kézi kiegészítésként.")
-
         target_month = target.strftime("%Y-%m")
         if target_month != self.selected_month:
             raise HomeAssistantError(
