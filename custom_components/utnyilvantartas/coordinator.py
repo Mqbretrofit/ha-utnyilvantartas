@@ -1797,6 +1797,7 @@ class UtnyMonthlyCoordinator(DataUpdateCoordinator[MonthlySummary]):
         commute_one_way_km: float,
         reimbursement_huf_per_km: float,
         base_odometer_km: float,
+        kelio_profile_key: str | None = None,
     ) -> None:
         super().__init__(
             hass,
@@ -1807,6 +1808,7 @@ class UtnyMonthlyCoordinator(DataUpdateCoordinator[MonthlySummary]):
         self.daily = daily_coordinator
         self.kelio_month_entity = kelio_month_entity
         self.kelio_today_entity = kelio_today_entity
+        self.kelio_profile_key = str(kelio_profile_key or "").strip() or None
         self.commute_one_way_km = float(commute_one_way_km)
         self.reimbursement_huf_per_km = float(reimbursement_huf_per_km)
         self.base_odometer_km = float(base_odometer_km)
@@ -2059,7 +2061,11 @@ class UtnyMonthlyCoordinator(DataUpdateCoordinator[MonthlySummary]):
             else None
         )
 
-        kelio_result_entity = "sensor.kelio_utolso_eredmeny"
+        kelio_result_entity = (
+            f"sensor.kelio_utolso_eredmeny_{self.kelio_profile_key}"
+            if self.kelio_profile_key
+            else "sensor.kelio_utolso_eredmeny"
+        )
         result_before = self.hass.states.get(kelio_result_entity)
         result_before_updated = result_before.last_updated if result_before is not None else None
 
@@ -2071,8 +2077,15 @@ class UtnyMonthlyCoordinator(DataUpdateCoordinator[MonthlySummary]):
 
         self.kelio_refresh_in_progress = True
         try:
+            history_command = (
+                f"history_month {self.kelio_profile_key} {target_month}"
+                if self.kelio_profile_key
+                else f"history_month {target_month}"
+            )
             _LOGGER.info(
-                "Kelio havi előzmények frissítése indul az Útnyilvántartás gombjáról: %s",
+                "Kelio havi előzmények frissítése indul az Útnyilvántartás gombjáról: "
+                "profil=%s, hónap=%s",
+                self.kelio_profile_key or "elsődleges",
                 target_month,
             )
             await self.hass.services.async_call(
@@ -2080,7 +2093,7 @@ class UtnyMonthlyCoordinator(DataUpdateCoordinator[MonthlySummary]):
                 "addon_stdin",
                 {
                     "addon": KELIO_ADDON_SLUG,
-                    "input": f"history_month {target_month}",
+                    "input": history_command,
                 },
                 blocking=True,
             )

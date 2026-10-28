@@ -2,7 +2,7 @@
 
 Home Assistant egyéni integráció **Alapnyomkövetés + Kelio** adatokból készített havi útnyilvántartáshoz.
 
-Aktuális verzió: **0.4.51**
+Aktuális verzió: **0.4.52**
 
 [![Open your Home Assistant instance and open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Mqbretrofit&repository=ha-utnyilvantartas&category=integration)
 
@@ -77,6 +77,14 @@ Az e-mail funkcióhoz előbb állítsd be a Home Assistant **SMTP** integráció
 - levélszöveg.
 
 Használható változók: `{month}`, `{employee}`, `{company}`, `{filename}`.
+
+## 0.4.52
+
+- A `profile_key`-vel rendelkező másodlagos Kelio-profilok automatikusan a saját, sluggal képzett entitásaikat használják (például `_dan`).
+- A havi Kelio-frissítés többé nem mindig az elsődleges profilt hívja: másodlagos profilnál `history_month <slug> YYYY-MM` parancsot küld az add-onnak.
+- A havi frissítés eredményét is a profil saját `sensor.kelio_utolso_eredmeny_<slug>` entitásán figyeli.
+- A régebbi config entrykben megmaradt általános Kelio entity ID-ket a profilkulcs felülírja, így Dán Péter nem kaphatja Mátrai Attila jelenléti adatait.
+- Nem szükséges `configuration.yaml` vagy külön shell/automation beállítás.
 
 ## 0.4.51
 

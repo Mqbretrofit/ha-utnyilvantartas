@@ -16,6 +16,7 @@ from .const import (
     CONF_HOME_GPS_RADIUS,
     CONF_KELIO_ENTITY,
     CONF_KELIO_MONTH_ENTITY,
+    CONF_KELIO_PROFILE_KEY,
     CONF_PASSWORD,
     CONF_SCAN_INTERVAL,
     CONF_ENDPOINT_WINDOW_KM,
@@ -207,8 +208,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     await coordinator.async_config_entry_first_refresh()
 
-    kelio_today = str(_entry_value(entry, CONF_KELIO_ENTITY, DEFAULT_KELIO_ENTITY))
-    kelio_month = str(_entry_value(entry, CONF_KELIO_MONTH_ENTITY, DEFAULT_KELIO_MONTH_ENTITY))
+    kelio_profile_key = str(_entry_value(entry, CONF_KELIO_PROFILE_KEY, "") or "").strip()
+    if kelio_profile_key:
+        # Secondary/read-only Kelio profiles use slug-suffixed HA entities.
+        # This intentionally overrides stale generic entity IDs saved by older
+        # Útnyilvántartás config entries (for example profile_key="dan").
+        kelio_today = f"binary_sensor.kelio_jelenlet_ma_{kelio_profile_key}"
+        kelio_month = f"sensor.kelio_havi_jelenlet_{kelio_profile_key}"
+    else:
+        kelio_today = str(_entry_value(entry, CONF_KELIO_ENTITY, DEFAULT_KELIO_ENTITY))
+        kelio_month = str(_entry_value(entry, CONF_KELIO_MONTH_ENTITY, DEFAULT_KELIO_MONTH_ENTITY))
+
     monthly = UtnyMonthlyAccountingCoordinator(
         hass,
         coordinator,
@@ -217,6 +227,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         float(_entry_value(entry, CONF_COMMUTE_ONE_WAY_KM, DEFAULT_COMMUTE_ONE_WAY_KM)),
         float(_entry_value(entry, CONF_REIMBURSEMENT_HUF_PER_KM, DEFAULT_REIMBURSEMENT_HUF_PER_KM)),
         float(_entry_value(entry, CONF_REPORT_START_ODOMETER, DEFAULT_REPORT_START_ODOMETER)),
+        kelio_profile_key=kelio_profile_key or None,
     )
     await monthly.async_config_entry_first_refresh()
 
