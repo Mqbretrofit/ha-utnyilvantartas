@@ -2,7 +2,7 @@
 
 Home Assistant egyéni integráció **Alapnyomkövetés + Kelio** adatokból készített havi útnyilvántartáshoz.
 
-Aktuális verzió: **0.4.53**
+Aktuális verzió: **0.4.54**
 
 [![Open your Home Assistant instance and open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Mqbretrofit&repository=ha-utnyilvantartas&category=integration)
 
@@ -77,6 +77,14 @@ Az e-mail funkcióhoz előbb állítsd be a Home Assistant **SMTP** integráció
 - levélszöveg.
 
 Használható változók: `{month}`, `{employee}`, `{company}`, `{filename}`.
+
+## 0.4.54
+
+- Javítva a hónap hátralévő napjaira felvitt kézi kiegészítések megőrzése.
+- A havi újraszámítás többé nem dobja el a mai nap utáni, de az aktuális hónapba tartozó kézi napokat.
+- A jövőbeli, nem kézzel rögzített napok nem jelennek meg tévesen „nincs jelenlét” rekordként.
+- Egy jövőbeli kézi nap törlésekor a placeholder rekord teljesen eltűnik.
+- A valódi Kelio-adat továbbra is automatikusan felülírja az azonos napi kézi kiegészítést.
 
 ## 0.4.53
 

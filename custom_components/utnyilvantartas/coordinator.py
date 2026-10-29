@@ -2000,13 +2000,21 @@ class UtnyMonthlyCoordinator(DataUpdateCoordinator[MonthlySummary]):
         )
         records = [deepcopy(record) for record in data.records]
         if target.isoformat() not in data.presence_dates:
-            replacement = _no_presence_record(target.isoformat())
-            for index, record in enumerate(records):
-                if record.get("date") == target.isoformat():
-                    records[index] = replacement
-                    break
+            if target > dt_util.now().date():
+                # A future manual placeholder has no automatic day record yet.
+                records = [
+                    record
+                    for record in records
+                    if record.get("date") != target.isoformat()
+                ]
             else:
-                records.append(replacement)
+                replacement = _no_presence_record(target.isoformat())
+                for index, record in enumerate(records):
+                    if record.get("date") == target.isoformat():
+                        records[index] = replacement
+                        break
+                else:
+                    records.append(replacement)
 
         manual_dates = set(data.manual_dates)
         manual_dates.discard(target.isoformat())
@@ -2261,18 +2269,18 @@ class UtnyMonthlyCoordinator(DataUpdateCoordinator[MonthlySummary]):
                 manual_overrides,
             )
 
+        # Manual month-end entries may intentionally target the remaining days
+        # of the currently selected month. Keep every manual day in that month;
+        # future months are still rejected by _validate_month().
         manual_dates = {
             key
             for key in manual_overrides
             if key.startswith(f"{month}-")
-            and date.fromisoformat(key) <= now.date()
         }
         effective_presence_dates = set(presence_dates) | manual_dates
 
         last_day = monthrange(year, month_no)[1]
-        if month == current_month:
-            upto = now.day
-        elif date(year, month_no, 1) > now.date():
+        if date(year, month_no, 1) > now.date():
             upto = 0
         else:
             upto = last_day
@@ -2287,6 +2295,12 @@ class UtnyMonthlyCoordinator(DataUpdateCoordinator[MonthlySummary]):
         for day_no in range(1, upto + 1):
             day = date(year, month_no, day_no)
             day_key = day.isoformat()
+
+            # Do not manufacture "no presence" rows for future calendar days.
+            # Only explicitly entered manual days are materialized before today.
+            if month == current_month and day > now.date() and day_key not in manual_dates:
+                continue
+
             if day_key in manual_dates and day_key not in presence_dates:
                 manual_record = _manual_record(day_key, manual_overrides[day_key])
                 records.append(manual_record)
